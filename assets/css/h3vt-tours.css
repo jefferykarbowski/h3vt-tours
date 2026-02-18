@@ -1,0 +1,1156 @@
+/**
+ * H3VT Tours - Virtual Tour Viewer Styles
+ *
+ * Full-screen Ken Burns slideshow with navigation, modals, and branded styling.
+ * All branding driven by CSS custom properties set on .h3vt-tour:
+ *   --h3vt-primary, --h3vt-secondary, --h3vt-text
+ *
+ * BEM naming: .h3vt-tour__*
+ *
+ * @package H3VT_Tours
+ * @since   1.0.0
+ */
+
+/* ==========================================================================
+   1. Base / Reset / Container
+   ========================================================================== */
+
+.h3vt-tour {
+	position: relative;
+	width: 100%;
+	height: 100vh;
+	overflow: hidden;
+	background: #000;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+	color: var(--h3vt-text, #fff);
+	line-height: 1.4;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+.h3vt-tour *,
+.h3vt-tour *::before,
+.h3vt-tour *::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+.h3vt-tour img {
+	max-width: 100%;
+	height: auto;
+}
+
+.h3vt-tour-page {
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	background: #000;
+}
+
+.h3vt-tour-shortcode .h3vt-tour {
+	height: 100%;
+}
+
+/* ==========================================================================
+   2. Header
+   ========================================================================== */
+
+.h3vt-tour__header {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	padding: 0 20px;
+	height: 60px;
+	background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+}
+
+.h3vt-tour__logo img {
+	max-height: 40px;
+	width: auto;
+	display: block;
+}
+
+.h3vt-tour__nav {
+	display: flex;
+	gap: 0;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.h3vt-tour__nav-item {
+	position: relative;
+}
+
+.h3vt-tour__nav-button {
+	background: none;
+	border: none;
+	color: var(--h3vt-text, #fff);
+	font-size: 14px;
+	padding: 8px 16px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	white-space: nowrap;
+	transition: color 0.2s;
+	font-family: inherit;
+	line-height: 1.4;
+}
+
+.h3vt-tour__nav-button:hover,
+.h3vt-tour__nav-button:focus-visible {
+	color: var(--h3vt-primary, #ff6b00);
+}
+
+.h3vt-tour__nav-button:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+.h3vt-tour__nav-chevron {
+	width: 10px;
+	height: 10px;
+	transition: transform 0.2s;
+}
+
+.h3vt-tour__nav-item--open .h3vt-tour__nav-chevron {
+	transform: rotate(180deg);
+}
+
+.h3vt-tour__dropdown {
+	display: none;
+	position: absolute;
+	top: 100%;
+	left: 0;
+	min-width: 200px;
+	background: rgba(0, 0, 0, 0.9);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 4px;
+	padding: 4px 0;
+	z-index: 200;
+}
+
+.h3vt-tour__nav-item--open .h3vt-tour__dropdown {
+	display: block;
+}
+
+.h3vt-tour__dropdown-item {
+	display: block;
+	width: 100%;
+	background: none;
+	border: none;
+	color: var(--h3vt-text, #fff);
+	font-size: 13px;
+	padding: 8px 16px;
+	cursor: pointer;
+	text-align: left;
+	transition: background 0.2s, color 0.2s;
+	font-family: inherit;
+	line-height: 1.4;
+}
+
+.h3vt-tour__dropdown-item:hover,
+.h3vt-tour__dropdown-item:focus-visible {
+	background: var(--h3vt-primary, #ff6b00);
+	color: #fff;
+}
+
+.h3vt-tour__dropdown-item:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: -2px;
+}
+
+/* ==========================================================================
+   3. Hamburger Menu (mobile)
+   ========================================================================== */
+
+.h3vt-tour__hamburger {
+	display: none;
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 8px;
+	z-index: 110;
+	margin-left: auto;
+}
+
+.h3vt-tour__hamburger:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+.h3vt-tour__hamburger span {
+	display: block;
+	width: 24px;
+	height: 2px;
+	background: var(--h3vt-text, #fff);
+	margin: 5px 0;
+	transition: transform 0.3s, opacity 0.3s;
+}
+
+.h3vt-tour__hamburger--open span:nth-child(1) {
+	transform: rotate(45deg) translate(5px, 6px);
+}
+
+.h3vt-tour__hamburger--open span:nth-child(2) {
+	opacity: 0;
+}
+
+.h3vt-tour__hamburger--open span:nth-child(3) {
+	transform: rotate(-45deg) translate(5px, -6px);
+}
+
+/* ==========================================================================
+   4. Slides + Ken Burns
+   ========================================================================== */
+
+.h3vt-tour__slides {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+}
+
+.h3vt-tour__slide {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	transition: opacity 1s ease-in-out;
+	z-index: 1;
+}
+
+.h3vt-tour__slide--active {
+	opacity: 1;
+	z-index: 2;
+}
+
+.h3vt-tour__slide-image {
+	position: absolute;
+	inset: 0;
+	background-size: cover;
+	background-position: center;
+	will-change: transform;
+}
+
+.h3vt-tour__slide--active .h3vt-tour__slide-image {
+	animation-duration: var(--h3vt-autoplay-speed, 8s);
+	animation-timing-function: ease-in-out;
+	animation-fill-mode: both;
+}
+
+.h3vt-tour__slide--active[data-kenburns="1"] .h3vt-tour__slide-image {
+	animation-name: h3vt-kb-1;
+}
+
+.h3vt-tour__slide--active[data-kenburns="2"] .h3vt-tour__slide-image {
+	animation-name: h3vt-kb-2;
+}
+
+.h3vt-tour__slide--active[data-kenburns="3"] .h3vt-tour__slide-image {
+	animation-name: h3vt-kb-3;
+}
+
+.h3vt-tour__slide--active[data-kenburns="4"] .h3vt-tour__slide-image {
+	animation-name: h3vt-kb-4;
+}
+
+.h3vt-tour__slide--active[data-kenburns="5"] .h3vt-tour__slide-image {
+	animation-name: h3vt-kb-5;
+}
+
+.h3vt-tour__slide--active[data-kenburns="6"] .h3vt-tour__slide-image {
+	animation-name: h3vt-kb-6;
+}
+
+@keyframes h3vt-kb-1 {
+	from {
+		transform: scale(1) translate(0, 0);
+	}
+
+	to {
+		transform: scale(1.15) translate(-2%, -1%);
+	}
+}
+
+@keyframes h3vt-kb-2 {
+	from {
+		transform: scale(1.15) translate(-2%, -1%);
+	}
+
+	to {
+		transform: scale(1) translate(0, 0);
+	}
+}
+
+@keyframes h3vt-kb-3 {
+	from {
+		transform: scale(1) translate(0, 0);
+	}
+
+	to {
+		transform: scale(1.12) translate(2%, -2%);
+	}
+}
+
+@keyframes h3vt-kb-4 {
+	from {
+		transform: scale(1.12) translate(2%, 0);
+	}
+
+	to {
+		transform: scale(1) translate(-1%, 1%);
+	}
+}
+
+@keyframes h3vt-kb-5 {
+	from {
+		transform: scale(1) translate(0, 0);
+	}
+
+	to {
+		transform: scale(1.18) translate(-1%, 2%);
+	}
+}
+
+@keyframes h3vt-kb-6 {
+	from {
+		transform: scale(1.18) translate(1%, -2%);
+	}
+
+	to {
+		transform: scale(1) translate(0, 0);
+	}
+}
+
+/* Slide content overlay */
+
+.h3vt-tour__slide-content {
+	position: absolute;
+	bottom: 100px;
+	left: 40px;
+	right: 40px;
+	z-index: 3;
+	max-width: 600px;
+}
+
+.h3vt-tour__slide-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+	margin-bottom: 12px;
+	color: var(--h3vt-text, #fff);
+}
+
+.h3vt-tour__slide-description {
+	font-size: 1.1rem;
+	line-height: 1.5;
+	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+	opacity: 0.9;
+	color: var(--h3vt-text, #fff);
+}
+
+/* ==========================================================================
+   5. Bottom Bar
+   ========================================================================== */
+
+.h3vt-tour__bottom-bar {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 20px;
+	background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+}
+
+.h3vt-tour__bottom-left,
+.h3vt-tour__bottom-right {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex: 1;
+}
+
+.h3vt-tour__bottom-right {
+	justify-content: flex-end;
+}
+
+.h3vt-tour__controls {
+	display: flex;
+	gap: 4px;
+	align-items: center;
+}
+
+/* ==========================================================================
+   6. Control Buttons (prev / play-pause / next)
+   ========================================================================== */
+
+.h3vt-tour__control {
+	background: none;
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	color: var(--h3vt-text, #fff);
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s;
+	padding: 0;
+	font-family: inherit;
+}
+
+.h3vt-tour__control:hover,
+.h3vt-tour__control:focus-visible {
+	background: var(--h3vt-primary, #ff6b00);
+	color: #fff;
+	border-color: var(--h3vt-primary, #ff6b00);
+}
+
+.h3vt-tour__control:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+}
+
+.h3vt-tour__control svg {
+	width: 16px;
+	height: 16px;
+	fill: currentColor;
+}
+
+/* ==========================================================================
+   7. Bottom Bar Buttons
+   ========================================================================== */
+
+.h3vt-tour__bottom-btn {
+	cursor: pointer;
+	border: none;
+	background: none;
+	color: var(--h3vt-text, #fff);
+	transition: all 0.2s;
+	font-family: inherit;
+}
+
+.h3vt-tour__bottom-btn:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+/* Icon-style bottom button (floor plans, testimonials, etc.) */
+
+.h3vt-tour__bottom-btn--icon {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding: 8px 12px;
+}
+
+.h3vt-tour__bottom-btn--icon img {
+	width: 32px;
+	height: 32px;
+	object-fit: contain;
+}
+
+.h3vt-tour__bottom-btn--icon span {
+	font-size: 11px;
+	white-space: nowrap;
+}
+
+.h3vt-tour__bottom-btn--icon:hover,
+.h3vt-tour__bottom-btn--icon:focus-visible {
+	transform: translateY(-2px);
+}
+
+/* Text-style bottom button (Schedule Tour, etc.) */
+
+.h3vt-tour__bottom-btn--text {
+	padding: 8px 20px;
+	border: 2px solid var(--h3vt-text, #fff);
+	border-radius: 4px;
+	font-size: 13px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.h3vt-tour__bottom-btn--text:hover,
+.h3vt-tour__bottom-btn--text:focus-visible {
+	background: var(--h3vt-secondary, #005a8c);
+	border-color: var(--h3vt-secondary, #005a8c);
+	color: #fff;
+}
+
+/* ==========================================================================
+   8. Fullscreen Button
+   ========================================================================== */
+
+.h3vt-tour__fullscreen-btn {
+	background: rgba(0, 0, 0, 0.4);
+	border: none;
+	color: var(--h3vt-text, #fff);
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.2s;
+	padding: 0;
+	z-index: 110;
+}
+
+.h3vt-tour__fullscreen-btn:hover,
+.h3vt-tour__fullscreen-btn:focus-visible {
+	background: rgba(0, 0, 0, 0.7);
+}
+
+.h3vt-tour__fullscreen-btn:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+}
+
+.h3vt-tour__fullscreen-btn svg {
+	width: 18px;
+	height: 18px;
+	fill: none;
+	stroke: currentColor;
+}
+
+/* ==========================================================================
+   9. Modal Shared Styles
+   ========================================================================== */
+
+.h3vt-tour__modal {
+	position: absolute;
+	inset: 0;
+	z-index: 500;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.h3vt-tour__modal[hidden] {
+	display: none;
+}
+
+.h3vt-tour__modal-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.8);
+}
+
+.h3vt-tour__modal-content {
+	position: relative;
+	z-index: 1;
+	background: #1a1a1a;
+	border-radius: 8px;
+	max-width: 90vw;
+	max-height: 90vh;
+	overflow: auto;
+	padding: 32px;
+	color: var(--h3vt-text, #fff);
+}
+
+.h3vt-tour__modal-close {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	background: none;
+	border: none;
+	color: var(--h3vt-text, #fff);
+	font-size: 28px;
+	cursor: pointer;
+	width: 36px;
+	height: 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	transition: background 0.2s;
+	padding: 0;
+	line-height: 1;
+	z-index: 2;
+}
+
+.h3vt-tour__modal-close:hover,
+.h3vt-tour__modal-close:focus-visible {
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.h3vt-tour__modal-close:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+}
+
+/* ==========================================================================
+   10. Testimonials Modal
+   ========================================================================== */
+
+.h3vt-tour__modal--testimonials .h3vt-tour__modal-content {
+	width: 800px;
+	max-width: 95vw;
+	padding: 0;
+	overflow: hidden;
+}
+
+.h3vt-tour__testimonial-video {
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	background: #000;
+	position: relative;
+}
+
+.h3vt-tour__testimonial-video iframe {
+	width: 100%;
+	height: 100%;
+	border: none;
+	display: block;
+}
+
+.h3vt-tour__testimonial-carousel {
+	display: flex;
+	gap: 12px;
+	padding: 16px;
+	overflow-x: auto;
+	background: #111;
+	-webkit-overflow-scrolling: touch;
+}
+
+.h3vt-tour__testimonial-carousel::-webkit-scrollbar {
+	height: 6px;
+}
+
+.h3vt-tour__testimonial-carousel::-webkit-scrollbar-track {
+	background: #222;
+}
+
+.h3vt-tour__testimonial-carousel::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 3px;
+}
+
+.h3vt-tour__testimonial-thumb {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	background: none;
+	border: 2px solid transparent;
+	border-radius: 8px;
+	padding: 8px;
+	cursor: pointer;
+	min-width: 100px;
+	transition: border-color 0.2s;
+	color: var(--h3vt-text, #fff);
+	font-family: inherit;
+}
+
+.h3vt-tour__testimonial-thumb:hover,
+.h3vt-tour__testimonial-thumb:focus-visible {
+	border-color: rgba(255, 255, 255, 0.3);
+}
+
+.h3vt-tour__testimonial-thumb:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+}
+
+.h3vt-tour__testimonial-thumb--active {
+	border-color: var(--h3vt-primary, #ff6b00);
+}
+
+.h3vt-tour__testimonial-thumb--active:hover {
+	border-color: var(--h3vt-primary, #ff6b00);
+}
+
+.h3vt-tour__testimonial-thumb img {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.h3vt-tour__testimonial-name {
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.h3vt-tour__testimonial-role {
+	font-size: 11px;
+	opacity: 0.7;
+}
+
+/* ==========================================================================
+   11. Floor Plans Panel
+   ========================================================================== */
+
+.h3vt-tour__panel--floorplans {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 400px;
+	max-width: 95vw;
+	height: 100%;
+	z-index: 500;
+	background: rgba(0, 0, 0, 0.95);
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	transform: translateX(100%);
+	transition: transform 0.3s ease;
+	color: var(--h3vt-text, #fff);
+}
+
+.h3vt-tour__panel--floorplans[hidden] {
+	display: none;
+}
+
+.h3vt-tour__panel--floorplans.h3vt-tour__panel--open {
+	transform: translateX(0);
+}
+
+.h3vt-tour__panel-close {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	background: none;
+	border: none;
+	color: var(--h3vt-text, #fff);
+	font-size: 28px;
+	cursor: pointer;
+	width: 36px;
+	height: 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	transition: background 0.2s;
+	padding: 0;
+	line-height: 1;
+	z-index: 2;
+}
+
+.h3vt-tour__panel-close:hover,
+.h3vt-tour__panel-close:focus-visible {
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.h3vt-tour__panel-close:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+}
+
+.h3vt-tour__floorplan-select {
+	width: 100%;
+	padding: 8px 12px;
+	background: #222;
+	color: var(--h3vt-text, #fff);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 4px;
+	font-size: 14px;
+	margin-top: 40px;
+	margin-bottom: 16px;
+	font-family: inherit;
+	cursor: pointer;
+}
+
+.h3vt-tour__floorplan-select:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+}
+
+.h3vt-tour__floorplan-wrapper {
+	flex: 1;
+	position: relative;
+	overflow: hidden;
+}
+
+.h3vt-tour__floorplan-container {
+	display: none;
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.h3vt-tour__floorplan-container--active {
+	display: block;
+}
+
+.h3vt-tour__floorplan-image {
+	width: 100%;
+	height: auto;
+	display: block;
+}
+
+/* Hotspots */
+
+.h3vt-tour__hotspot {
+	position: absolute;
+	background: none;
+	border: none;
+	cursor: pointer;
+	transform: translate(-50%, -50%);
+	z-index: 10;
+	padding: 0;
+}
+
+.h3vt-tour__hotspot:focus-visible {
+	outline: none;
+}
+
+.h3vt-tour__hotspot:focus-visible .h3vt-tour__hotspot-dot {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 4px;
+	transform: scale(1.3);
+}
+
+.h3vt-tour__hotspot-dot {
+	display: block;
+	width: 16px;
+	height: 16px;
+	background: var(--h3vt-primary, #ff6b00);
+	border: 2px solid #fff;
+	border-radius: 50%;
+	box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+	transition: transform 0.2s;
+	animation: h3vt-hotspot-pulse 2s infinite;
+}
+
+.h3vt-tour__hotspot:hover .h3vt-tour__hotspot-dot {
+	transform: scale(1.3);
+}
+
+.h3vt-tour__hotspot-label {
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	white-space: nowrap;
+	background: rgba(0, 0, 0, 0.8);
+	color: #fff;
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 3px;
+	margin-top: 4px;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+
+.h3vt-tour__hotspot:hover .h3vt-tour__hotspot-label,
+.h3vt-tour__hotspot:focus-visible .h3vt-tour__hotspot-label {
+	opacity: 1;
+}
+
+@keyframes h3vt-hotspot-pulse {
+	0% {
+		box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+	}
+
+	100% {
+		box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+	}
+}
+
+/* ==========================================================================
+   12. Contact Modal
+   ========================================================================== */
+
+.h3vt-tour__modal--contact .h3vt-tour__modal-content {
+	width: 480px;
+	max-width: 95vw;
+	text-align: center;
+	padding: 40px;
+}
+
+.h3vt-tour__contact-logo {
+	max-width: 120px;
+	height: auto;
+	margin-bottom: 20px;
+}
+
+.h3vt-tour__contact-name {
+	font-size: 1.4rem;
+	margin-bottom: 8px;
+	font-weight: 700;
+}
+
+.h3vt-tour__contact-address {
+	font-size: 0.9rem;
+	opacity: 0.8;
+	margin-bottom: 16px;
+	white-space: pre-line;
+	line-height: 1.5;
+}
+
+.h3vt-tour__contact-email,
+.h3vt-tour__contact-phone {
+	display: block;
+	color: var(--h3vt-primary, #ff6b00);
+	text-decoration: none;
+	font-size: 1rem;
+	margin-bottom: 8px;
+	transition: opacity 0.2s;
+}
+
+.h3vt-tour__contact-email a,
+.h3vt-tour__contact-phone a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.h3vt-tour__contact-email:hover,
+.h3vt-tour__contact-email:focus-within,
+.h3vt-tour__contact-phone:hover,
+.h3vt-tour__contact-phone:focus-within {
+	opacity: 0.8;
+}
+
+.h3vt-tour__contact-email:focus-visible,
+.h3vt-tour__contact-phone:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+.h3vt-tour__contact-map {
+	margin-top: 20px;
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.h3vt-tour__contact-map iframe {
+	width: 100%;
+	height: 200px;
+	border: none;
+	display: block;
+}
+
+/* ==========================================================================
+   13. 3D Tour Modal
+   ========================================================================== */
+
+.h3vt-tour__modal--3dtour .h3vt-tour__modal-content {
+	width: 90vw;
+	height: 80vh;
+	max-width: 1200px;
+	padding: 0;
+	overflow: hidden;
+}
+
+.h3vt-tour__3dtour-container {
+	width: 100%;
+	height: 100%;
+}
+
+.h3vt-tour__3dtour-container iframe {
+	width: 100%;
+	height: 100%;
+	border: none;
+	display: block;
+}
+
+/* ==========================================================================
+   14. Fullscreen Adjustments
+   ========================================================================== */
+
+.h3vt-tour--fullscreen {
+	width: 100vw;
+	height: 100vh;
+}
+
+/* ==========================================================================
+   15. Accessibility - Skip Link & Focus
+   ========================================================================== */
+
+.h3vt-tour__skip-link {
+	position: absolute;
+	top: -100%;
+	left: 0;
+	z-index: 9999;
+	padding: 8px 16px;
+	background: var(--h3vt-primary, #ff6b00);
+	color: #fff;
+	text-decoration: none;
+	font-weight: 600;
+}
+
+.h3vt-tour__skip-link:focus {
+	top: 0;
+}
+
+/* ==========================================================================
+   16. Responsive - Tablet (max-width: 1024px)
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+	.h3vt-tour__nav-button {
+		font-size: 13px;
+		padding: 8px 10px;
+	}
+}
+
+/* ==========================================================================
+   17. Responsive - Mobile (max-width: 767px)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+
+	/* Hamburger visible */
+	.h3vt-tour__hamburger {
+		display: block;
+	}
+
+	/* Nav hidden by default on mobile */
+	.h3vt-tour__nav {
+		display: none;
+	}
+
+	/* Nav shown when menu open */
+	.h3vt-tour__header--menu-open .h3vt-tour__nav {
+		display: flex;
+		flex-direction: column;
+		position: absolute;
+		top: 60px;
+		left: 0;
+		right: 0;
+		background: rgba(0, 0, 0, 0.95);
+		padding: 10px 0;
+	}
+
+	/* Fullscreen button ordered before hamburger */
+	.h3vt-tour__fullscreen-btn {
+		order: -1;
+	}
+
+	/* Slide content adjustments */
+	.h3vt-tour__slide-content {
+		bottom: 80px;
+		left: 16px;
+		right: 16px;
+	}
+
+	.h3vt-tour__slide-title {
+		font-size: 1.5rem;
+	}
+
+	.h3vt-tour__slide-description {
+		font-size: 0.9rem;
+	}
+
+	/* Bottom bar adjustments */
+	.h3vt-tour__bottom-bar {
+		flex-wrap: wrap;
+		padding: 8px 12px;
+	}
+
+	.h3vt-tour__bottom-left,
+	.h3vt-tour__bottom-right {
+		flex-basis: 50%;
+	}
+
+	.h3vt-tour__controls {
+		order: -1;
+		flex-basis: 100%;
+		justify-content: center;
+		margin-bottom: 8px;
+	}
+
+	.h3vt-tour__bottom-btn--text {
+		padding: 6px 12px;
+		font-size: 11px;
+	}
+
+	/* Modals at near-full width */
+	.h3vt-tour__modal-content {
+		max-width: 95vw;
+		max-height: 90vh;
+	}
+
+	/* Floor plans panel full width */
+	.h3vt-tour__panel--floorplans {
+		width: 100%;
+	}
+
+	/* Dropdown full width on mobile */
+	.h3vt-tour__dropdown {
+		position: static;
+		border: none;
+		border-radius: 0;
+		background: rgba(255, 255, 255, 0.05);
+	}
+}
+
+/* ==========================================================================
+   18. Reduced Motion
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+	.h3vt-tour__slide-image {
+		animation: none !important;
+	}
+
+	.h3vt-tour__hotspot-dot {
+		animation: none !important;
+	}
+
+	.h3vt-tour__slide {
+		transition-duration: 0.01s !important;
+	}
+
+	.h3vt-tour__panel--floorplans {
+		transition-duration: 0.01s !important;
+	}
+}
+
+/* ==========================================================================
+   19. Print Styles
+   ========================================================================== */
+
+@media print {
+
+	.h3vt-tour {
+		height: auto;
+		overflow: visible;
+		background: #fff;
+		color: #000;
+	}
+
+	.h3vt-tour__header,
+	.h3vt-tour__bottom-bar,
+	.h3vt-tour__controls,
+	.h3vt-tour__fullscreen-btn,
+	.h3vt-tour__hamburger {
+		display: none !important;
+	}
+
+	.h3vt-tour__slide {
+		position: static;
+		opacity: 1;
+		page-break-inside: avoid;
+	}
+
+	.h3vt-tour__slide-image {
+		position: static;
+		height: 300px;
+		animation: none !important;
+	}
+}
