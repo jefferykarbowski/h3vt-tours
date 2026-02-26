@@ -20,13 +20,16 @@ class H3VT_Tours_ACF {
 	public function __construct() {
 		add_action( 'acf/init', array( $this, 'register_fields' ) );
 		add_filter( 'acf/load_field/name=slide_nav_category', array( $this, 'populate_nav_categories' ) );
+		add_filter( 'acf/load_field/name=slide_floorplan', array( $this, 'populate_floorplan_choices' ) );
 	}
 
 	/**
 	 * Register all six field groups.
 	 */
 	public function register_fields() {
+		$this->register_template_selector();
 		$this->register_tour_settings();
+		$this->register_template_fields();
 		$this->register_navigation_slides();
 		$this->register_testimonials();
 		$this->register_floorplans();
@@ -35,58 +38,90 @@ class H3VT_Tours_ACF {
 	}
 
 	/**
-	 * Group 1: Tour Settings.
+	 * Template Selector — appears at the top of the tour editor.
+	 */
+	private function register_template_selector() {
+		acf_add_local_field_group( array(
+			'key'      => 'group_h3vt_template_selector',
+			'title'    => 'Template',
+			'fields'   => array(
+				array(
+					'key'           => 'field_h3vt_tour_template',
+					'label'         => 'Tour Template',
+					'name'          => 'tour_template',
+					'type'          => 'post_object',
+					'post_type'     => array( 'h3vt_tour_template' ),
+					'return_format' => 'id',
+					'allow_null'    => 1,
+					'instructions'  => 'Select a template for shared styling (colors, logo, icon, button style, autoplay speed). Leave empty to use defaults.',
+				),
+			),
+			'location' => array(
+				array(
+					array(
+						'param'    => 'post_type',
+						'operator' => '==',
+						'value'    => 'h3vt_tour',
+					),
+				),
+			),
+			'menu_order' => -1,
+		) );
+	}
+
+	/**
+	 * Group 1: Hero Settings (tour-specific fields only).
 	 */
 	private function register_tour_settings() {
 		acf_add_local_field_group( array(
 			'key'      => 'group_h3vt_settings',
-			'title'    => 'Tour Settings',
+			'title'    => 'Hero Settings',
 			'fields'   => array(
 				array(
-					'key'           => 'field_h3vt_settings_primary_color',
-					'label'         => 'Primary Color',
-					'name'          => 'primary_color',
-					'type'          => 'color_picker',
-					'default_value' => '#FF6B00',
+					'key'           => 'field_h3vt_settings_hero_media_type',
+					'label'         => 'Hero Media Type',
+					'name'          => 'hero_media_type',
+					'type'          => 'radio',
+					'choices'       => array(
+						'image' => 'Image',
+						'video' => 'Video',
+					),
+					'default_value' => 'image',
+					'layout'        => 'horizontal',
 				),
 				array(
-					'key'           => 'field_h3vt_settings_secondary_color',
-					'label'         => 'Secondary Color',
-					'name'          => 'secondary_color',
-					'type'          => 'color_picker',
-					'default_value' => '#1A1A1A',
+					'key'               => 'field_h3vt_settings_hero_image',
+					'label'             => 'Hero Image',
+					'name'              => 'hero_image',
+					'type'              => 'image',
+					'return_format'     => 'array',
+					'preview_size'      => 'large',
+					'conditional_logic' => array(
+						array(
+							array(
+								'field'    => 'field_h3vt_settings_hero_media_type',
+								'operator' => '==',
+								'value'    => 'image',
+							),
+						),
+					),
 				),
 				array(
-					'key'           => 'field_h3vt_settings_text_color',
-					'label'         => 'Text Color',
-					'name'          => 'text_color',
-					'type'          => 'color_picker',
-					'default_value' => '#FFFFFF',
-				),
-				array(
-					'key'           => 'field_h3vt_settings_logo',
-					'label'         => 'Logo',
-					'name'          => 'logo',
-					'type'          => 'image',
-					'return_format' => 'array',
-					'preview_size'  => 'medium',
-				),
-				array(
-					'key'           => 'field_h3vt_settings_icon',
-					'label'         => 'Icon',
-					'name'          => 'icon',
-					'type'          => 'image',
-					'return_format' => 'array',
-					'preview_size'  => 'thumbnail',
-					'instructions'  => 'Icon image for icon-style buttons.',
-				),
-				array(
-					'key'           => 'field_h3vt_settings_hero_image',
-					'label'         => 'Hero Image',
-					'name'          => 'hero_image',
-					'type'          => 'image',
-					'return_format' => 'array',
-					'preview_size'  => 'large',
+					'key'               => 'field_h3vt_settings_hero_video',
+					'label'             => 'Hero Video',
+					'name'              => 'hero_video',
+					'type'              => 'file',
+					'return_format'     => 'array',
+					'mime_types'        => 'mp4,webm',
+					'conditional_logic' => array(
+						array(
+							array(
+								'field'    => 'field_h3vt_settings_hero_media_type',
+								'operator' => '==',
+								'value'    => 'video',
+							),
+						),
+					),
 				),
 				array(
 					'key'   => 'field_h3vt_settings_hero_title',
@@ -101,8 +136,68 @@ class H3VT_Tours_ACF {
 					'type'  => 'textarea',
 					'rows'  => 3,
 				),
+			),
+			'location' => array(
 				array(
-					'key'           => 'field_h3vt_settings_button_style',
+					array(
+						'param'    => 'post_type',
+						'operator' => '==',
+						'value'    => 'h3vt_tour',
+					),
+				),
+			),
+			'menu_order' => 0,
+		) );
+	}
+
+	/**
+	 * Template Fields — styling/branding fields on the template CPT.
+	 */
+	private function register_template_fields() {
+		acf_add_local_field_group( array(
+			'key'      => 'group_h3vt_template',
+			'title'    => 'Template Settings',
+			'fields'   => array(
+				array(
+					'key'           => 'field_h3vt_tpl_primary_color',
+					'label'         => 'Primary Color',
+					'name'          => 'primary_color',
+					'type'          => 'color_picker',
+					'default_value' => '#FF6B00',
+				),
+				array(
+					'key'           => 'field_h3vt_tpl_secondary_color',
+					'label'         => 'Secondary Color',
+					'name'          => 'secondary_color',
+					'type'          => 'color_picker',
+					'default_value' => '#1A1A1A',
+				),
+				array(
+					'key'           => 'field_h3vt_tpl_text_color',
+					'label'         => 'Text Color',
+					'name'          => 'text_color',
+					'type'          => 'color_picker',
+					'default_value' => '#FFFFFF',
+				),
+				array(
+					'key'           => 'field_h3vt_tpl_logo',
+					'label'         => 'Logo',
+					'name'          => 'logo',
+					'type'          => 'image',
+					'return_format' => 'array',
+					'preview_size'  => 'medium',
+				),
+				array(
+					'key'           => 'field_h3vt_tpl_icon',
+					'label'         => 'Icon',
+					'name'          => 'icon',
+					'type'          => 'image',
+					'return_format' => 'array',
+					'preview_size'  => 'thumbnail',
+					'instructions'  => 'Icon image for icon-style buttons.',
+				),
+				array(
+					'key'           => 'field_h3vt_tpl_button_style',
 					'label'         => 'Button Style',
 					'name'          => 'button_style',
 					'type'          => 'select',
@@ -113,7 +208,7 @@ class H3VT_Tours_ACF {
 					'default_value' => 'text',
 				),
 				array(
-					'key'           => 'field_h3vt_settings_autoplay_speed',
+					'key'           => 'field_h3vt_tpl_autoplay_speed',
 					'label'         => 'Autoplay Speed',
 					'name'          => 'autoplay_speed',
 					'type'          => 'number',
@@ -129,7 +224,7 @@ class H3VT_Tours_ACF {
 					array(
 						'param'    => 'post_type',
 						'operator' => '==',
-						'value'    => 'h3vt_tour',
+						'value'    => 'h3vt_tour_template',
 					),
 				),
 			),
@@ -204,6 +299,38 @@ class H3VT_Tours_ACF {
 							'name'    => 'slide_nav_category',
 							'type'    => 'select',
 							'choices' => array(),
+						),
+						array(
+							'key'          => 'field_h3vt_navigation_slide_floorplan',
+							'label'        => 'Floorplan Hotspot',
+							'name'         => 'slide_floorplan',
+							'type'         => 'select',
+							'choices'      => array(),
+							'instructions' => 'Select a floor plan to place this slide\'s hotspot on.',
+							'allow_null'   => 1,
+							'wrapper'      => array( 'class' => 'h3vt-hotspot-floorplan-select' ),
+						),
+						array(
+							'key'     => 'field_h3vt_navigation_slide_hotspot_x',
+							'label'   => 'Hotspot X',
+							'name'    => 'slide_hotspot_x',
+							'type'    => 'number',
+							'min'     => 0,
+							'max'     => 100,
+							'step'    => 0.1,
+							'append'  => '%',
+							'wrapper' => array( 'class' => 'h3vt-hotspot-x-field' ),
+						),
+						array(
+							'key'     => 'field_h3vt_navigation_slide_hotspot_y',
+							'label'   => 'Hotspot Y',
+							'name'    => 'slide_hotspot_y',
+							'type'    => 'number',
+							'min'     => 0,
+							'max'     => 100,
+							'step'    => 0.1,
+							'append'  => '%',
+							'wrapper' => array( 'class' => 'h3vt-hotspot-y-field' ),
 						),
 					),
 				),
@@ -552,6 +679,44 @@ class H3VT_Tours_ACF {
 				$label             = sanitize_text_field( $category['nav_label'] );
 				$choices[ $label ] = $label;
 			}
+		}
+
+		$field['choices'] = $choices;
+
+		return $field;
+	}
+
+	/**
+	 * Dynamically populate the slide_floorplan select field with the
+	 * floorplans repeater labels from the current post.
+	 *
+	 * @param array $field ACF field config.
+	 * @return array
+	 */
+	public function populate_floorplan_choices( $field ) {
+		$post_id = 0;
+
+		if ( isset( $_GET['post'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$post_id = absint( $_GET['post'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		} elseif ( isset( $_POST['post_id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$post_id = absint( $_POST['post_id'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
+		if ( ! $post_id ) {
+			return $field;
+		}
+
+		$floorplans = get_field( 'floorplans', $post_id );
+
+		if ( empty( $floorplans ) || ! is_array( $floorplans ) ) {
+			$field['choices'] = array();
+			return $field;
+		}
+
+		$choices = array();
+		foreach ( $floorplans as $index => $fp ) {
+			$label = ! empty( $fp['floorplan_label'] ) ? sanitize_text_field( $fp['floorplan_label'] ) : sprintf( 'Floor Plan %d', $index + 1 );
+			$choices[ $index ] = $label;
 		}
 
 		$field['choices'] = $choices;

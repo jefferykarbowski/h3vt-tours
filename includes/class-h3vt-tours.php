@@ -54,6 +54,12 @@ class H3VT_Tours {
 		require_once $dir . 'class-h3vt-tours-shortcode.php';
 		require_once $dir . 'class-h3vt-tours-rest-api.php';
 		require_once $dir . 'class-h3vt-tours-embed.php';
+		require_once $dir . 'class-h3vt-tours-hotspot-editor.php';
+		require_once $dir . 'class-h3vt-tours-embed-metabox.php';
+		require_once $dir . 'class-h3vt-tours-s3.php';
+		require_once $dir . 'class-h3vt-tours-s3-field-filter.php';
+		require_once $dir . 'class-h3vt-tours-settings.php';
+		require_once $dir . 'class-h3vt-tours-s3-ajax.php';
 	}
 
 	/**
@@ -66,5 +72,13 @@ class H3VT_Tours {
 		new H3VT_Tours_Shortcode();
 		new H3VT_Tours_REST_API();
 		new H3VT_Tours_Embed();
+		new H3VT_Tours_S3_Field_Filter();
+
+		if ( is_admin() ) {
+			new H3VT_Tours_Hotspot_Editor();
+			new H3VT_Tours_Embed_Metabox();
+			new H3VT_Tours_Settings();
+			new H3VT_Tours_S3_Ajax();
+		}
 	}
 }

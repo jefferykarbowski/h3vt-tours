@@ -42,6 +42,44 @@
 			return;
 		}
 
+		// Hero video detection — defer slideshow autoplay; ensure video plays on load.
+		var heroVideo = slides[0].querySelector( '.h3vt-tour__slide-video' );
+		if ( heroVideo ) {
+			isPlaying = false;
+
+			var playIcons  = tourEl.querySelectorAll( '.h3vt-tour__icon--play' );
+			var pauseIcons = tourEl.querySelectorAll( '.h3vt-tour__icon--pause' );
+			playIcons.forEach( function ( el ) {
+				el.style.display = '';
+			});
+			pauseIcons.forEach( function ( el ) {
+				el.style.display = 'none';
+			});
+
+			// Explicitly trigger playback — some browsers ignore the autoplay attribute.
+			var playPromise = heroVideo.play();
+			if ( playPromise !== undefined ) {
+				playPromise.catch( function () {} );
+			}
+
+			heroVideo.addEventListener( 'ended', function () {
+				if ( currentIndex !== 0 ) {
+					return;
+				}
+				isPlaying = true;
+
+				playIcons.forEach( function ( el ) {
+					el.style.display = 'none';
+				});
+				pauseIcons.forEach( function ( el ) {
+					el.style.display = '';
+				});
+
+				nextSlide();
+				resetAutoplay();
+			});
+		}
+
 		/* ---------------------------------------------------------------
 		 * 2. Slideshow Engine
 		 * ------------------------------------------------------------- */
@@ -61,12 +99,21 @@
 			slides[ currentIndex ].classList.remove( 'h3vt-tour__slide--active' );
 			slides[ index ].classList.add( 'h3vt-tour__slide--active' );
 
-			// Re-trigger Ken Burns animation on the incoming slide image.
-			var img = slides[ index ].querySelector( '.h3vt-tour__slide-image' );
-			if ( img ) {
-				img.style.animationName = 'none';
-				void img.offsetHeight; // force reflow
-				img.style.animationName = '';
+			// Re-trigger Ken Burns animation on the incoming slide image (skip for video slides).
+			if ( ! slides[ index ].hasAttribute( 'data-hero-video' ) ) {
+				var img = slides[ index ].querySelector( '.h3vt-tour__slide-image' );
+				if ( img ) {
+					img.style.animationName = 'none';
+					void img.offsetHeight; // force reflow
+					img.style.animationName = '';
+				}
+			}
+
+			// Replay hero video from the start when navigating back to it.
+			var slideVideo = slides[ index ].querySelector( '.h3vt-tour__slide-video' );
+			if ( slideVideo ) {
+				slideVideo.currentTime = 0;
+				slideVideo.play();
 			}
 
 			currentIndex = index;
@@ -146,6 +193,16 @@
 						goToSlide( idx );
 					}
 					navItem.classList.remove( 'h3vt-tour__nav-item--open' );
+
+					// Collapse the mobile hamburger menu.
+					if ( hamburger ) {
+						hamburger.classList.remove( 'h3vt-tour__hamburger--open' );
+						hamburger.setAttribute( 'aria-expanded', 'false' );
+						var header = tourEl.querySelector( '.h3vt-tour__header' );
+						if ( header ) {
+							header.classList.remove( 'h3vt-tour__header--menu-open' );
+						}
+					}
 				});
 			});
 		});

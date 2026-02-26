@@ -71,6 +71,7 @@ register_activation_hook( __FILE__, function () {
 	require_once H3VT_TOURS_PATH . 'includes/class-h3vt-tours-cpt.php';
 	$cpt = new H3VT_Tours_CPT();
 	$cpt->register();
+	$cpt->register_template_cpt();
 	flush_rewrite_rules();
 } );
 

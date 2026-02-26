@@ -25,19 +25,58 @@ class H3VT_Tours_Renderer {
 	 */
 	public static function get_tour_data( $post_id ) {
 		/*
+		 * Resolve template — styling fields come from the linked template
+		 * post when one is selected and valid, otherwise use defaults.
+		 */
+		$template_id = get_field( 'tour_template', $post_id );
+		$use_template = false;
+
+		if ( $template_id ) {
+			$template_id  = absint( $template_id );
+			$template_post = get_post( $template_id );
+
+			if ( $template_post
+				&& 'h3vt_tour_template' === $template_post->post_type
+				&& 'publish' === $template_post->post_status
+			) {
+				$use_template = true;
+			}
+		}
+
+		if ( $use_template ) {
+			$primary_color   = get_field( 'primary_color', $template_id ) ?: '#FF6B00';
+			$secondary_color = get_field( 'secondary_color', $template_id ) ?: '#1A1A1A';
+			$text_color      = get_field( 'text_color', $template_id ) ?: '#FFFFFF';
+			$logo            = get_field( 'logo', $template_id );
+			$icon            = get_field( 'icon', $template_id );
+			$button_style    = get_field( 'button_style', $template_id ) ?: 'text';
+			$autoplay_speed  = get_field( 'autoplay_speed', $template_id ) ?: 8;
+		} else {
+			$primary_color   = '#FF6B00';
+			$secondary_color = '#1A1A1A';
+			$text_color      = '#FFFFFF';
+			$logo            = null;
+			$icon            = null;
+			$button_style    = 'text';
+			$autoplay_speed  = 8;
+		}
+
+		/*
 		 * Settings.
 		 */
 		$settings = array(
-			'primary_color'   => get_field( 'primary_color', $post_id ) ?: '#FF6B00',
-			'secondary_color' => get_field( 'secondary_color', $post_id ) ?: '#1A1A1A',
-			'text_color'      => get_field( 'text_color', $post_id ) ?: '#FFFFFF',
-			'logo'            => get_field( 'logo', $post_id ),
-			'icon'            => get_field( 'icon', $post_id ),
-			'hero_image'      => get_field( 'hero_image', $post_id ),
-			'hero_title'      => get_field( 'hero_title', $post_id ) ?: '',
+			'primary_color'    => $primary_color,
+			'secondary_color'  => $secondary_color,
+			'text_color'       => $text_color,
+			'logo'             => $logo,
+			'icon'             => $icon,
+			'hero_image'       => get_field( 'hero_image', $post_id ),
+			'hero_media_type'  => get_field( 'hero_media_type', $post_id ) ?: 'image',
+			'hero_video'       => get_field( 'hero_video', $post_id ),
+			'hero_title'       => get_field( 'hero_title', $post_id ) ?: '',
 			'hero_description' => get_field( 'hero_description', $post_id ) ?: '',
-			'button_style'    => get_field( 'button_style', $post_id ) ?: 'text',
-			'autoplay_speed'  => get_field( 'autoplay_speed', $post_id ) ?: 8,
+			'button_style'     => $button_style,
+			'autoplay_speed'   => $autoplay_speed,
 		);
 
 		/*
@@ -89,6 +128,37 @@ class H3VT_Tours_Renderer {
 			$raw = get_field( 'floorplans', $post_id );
 			if ( is_array( $raw ) ) {
 				$floorplans_items = $raw;
+			}
+		}
+
+		/*
+		 * Merge slide-level hotspots into floorplan items.
+		 */
+		if ( $floorplans_enabled && ! empty( $floorplans_items ) ) {
+			foreach ( $slides as $slide ) {
+				$fp_index = isset( $slide['slide_floorplan'] ) ? $slide['slide_floorplan'] : '';
+				$hs_x     = isset( $slide['slide_hotspot_x'] ) ? $slide['slide_hotspot_x'] : '';
+				$hs_y     = isset( $slide['slide_hotspot_y'] ) ? $slide['slide_hotspot_y'] : '';
+
+				if ( '' === $fp_index || '' === $hs_x || '' === $hs_y ) {
+					continue;
+				}
+
+				$fp_index = absint( $fp_index );
+				if ( ! isset( $floorplans_items[ $fp_index ] ) ) {
+					continue;
+				}
+
+				if ( empty( $floorplans_items[ $fp_index ]['floorplan_hotspots'] ) || ! is_array( $floorplans_items[ $fp_index ]['floorplan_hotspots'] ) ) {
+					$floorplans_items[ $fp_index ]['floorplan_hotspots'] = array();
+				}
+
+				$floorplans_items[ $fp_index ]['floorplan_hotspots'][] = array(
+					'hotspot_x'            => floatval( $hs_x ),
+					'hotspot_y'            => floatval( $hs_y ),
+					'hotspot_target_slide' => $slide['slide_index'],
+					'hotspot_label'        => ! empty( $slide['slide_title'] ) ? $slide['slide_title'] : '',
+				);
 			}
 		}
 
@@ -228,14 +298,24 @@ class H3VT_Tours_Renderer {
 	 * @param array $data Tour data.
 	 */
 	private static function render_slides( $data ) {
-		$hero_image = $data['settings']['hero_image'];
-		$hero_url   = ( ! empty( $hero_image ) && is_array( $hero_image ) ) ? $hero_image['url'] : '';
-		$hero_kb    = wp_rand( 1, 6 );
+		$hero_image      = $data['settings']['hero_image'];
+		$hero_url        = ( ! empty( $hero_image ) && is_array( $hero_image ) ) ? $hero_image['url'] : '';
+		$hero_media_type = $data['settings']['hero_media_type'];
+		$hero_video      = $data['settings']['hero_video'];
+		$hero_video_url  = ( ! empty( $hero_video ) && is_array( $hero_video ) ) ? $hero_video['url'] : '';
+		$is_hero_video   = ( 'video' === $hero_media_type && $hero_video_url );
+		$hero_kb         = $is_hero_video ? 0 : wp_rand( 1, 6 );
 		?>
 		<div class="h3vt-tour__slides">
 			<?php /* Hero slide — index 0 */ ?>
-			<div class="h3vt-tour__slide h3vt-tour__slide--active" data-index="0" data-kenburns="<?php echo esc_attr( $hero_kb ); ?>">
-				<div class="h3vt-tour__slide-image" style="background-image:url(<?php echo esc_url( $hero_url ); ?>)"></div>
+			<div class="h3vt-tour__slide h3vt-tour__slide--active" data-index="0" data-kenburns="<?php echo esc_attr( $hero_kb ); ?>"<?php echo $is_hero_video ? ' data-hero-video="true"' : ''; ?>>
+				<?php if ( $is_hero_video ) : ?>
+					<video class="h3vt-tour__slide-video" autoplay muted playsinline preload="auto">
+						<source src="<?php echo esc_url( $hero_video_url ); ?>" type="<?php echo esc_attr( $hero_video['mime_type'] ); ?>">
+					</video>
+				<?php else : ?>
+					<div class="h3vt-tour__slide-image" style="background-image:url(<?php echo esc_url( $hero_url ); ?>)"></div>
+				<?php endif; ?>
 				<div class="h3vt-tour__slide-content">
 					<?php if ( $data['settings']['hero_title'] ) : ?>
 						<h2 class="h3vt-tour__slide-title"><?php echo esc_html( $data['settings']['hero_title'] ); ?></h2>

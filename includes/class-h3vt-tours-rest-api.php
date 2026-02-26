@@ -25,6 +25,13 @@ class H3VT_Tours_REST_API {
 	 * Register REST routes.
 	 */
 	public function register_routes() {
+		$format_arg = array(
+			'validate_callback' => function ( $param ) {
+				return in_array( $param, array( 'json', 'html' ), true );
+			},
+			'default'           => 'json',
+		);
+
 		register_rest_route(
 			'h3vt-tours/v1',
 			'/tour/(?P<id>\d+)',
@@ -39,15 +46,48 @@ class H3VT_Tours_REST_API {
 						},
 						'sanitize_callback' => 'absint',
 					),
-					'format' => array(
-						'validate_callback' => function ( $param ) {
-							return in_array( $param, array( 'json', 'html' ), true );
-						},
-						'default'           => 'json',
-					),
+					'format' => $format_arg,
 				),
 			)
 		);
+
+		register_rest_route(
+			'h3vt-tours/v1',
+			'/tour/by-slug/(?P<slug>[a-z0-9-]+)',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_tour_by_slug' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'slug'   => array(
+						'sanitize_callback' => 'sanitize_title',
+					),
+					'format' => $format_arg,
+				),
+			)
+		);
+	}
+
+	/**
+	 * Handle the GET request for a tour looked up by slug.
+	 *
+	 * @param WP_REST_Request $request Full details about the request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function get_tour_by_slug( WP_REST_Request $request ) {
+		$slug = $request->get_param( 'slug' );
+		$post = get_page_by_path( $slug, OBJECT, 'h3vt_tour' );
+
+		if ( ! $post ) {
+			return new WP_Error(
+				'h3vt_tour_not_found',
+				__( 'Tour not found.', 'h3vt-tours' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$request->set_param( 'id', $post->ID );
+		return $this->get_tour( $request );
 	}
 
 	/**

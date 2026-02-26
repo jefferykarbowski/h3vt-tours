@@ -1,0 +1,58 @@
+/**
+ * Hotspot editor admin styles.
+ */
+
+.h3vt-hotspot-editor {
+	position: relative;
+	max-width: 500px;
+	cursor: crosshair;
+	margin: 12px auto 12px;
+	padding: 8px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	overflow: hidden;
+	background: #f0f0f1;
+}
+
+.h3vt-hotspot-editor img {
+	width: 100%;
+	display: block;
+	pointer-events: none;
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+.h3vt-hotspot-editor__dot {
+	position: absolute;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #FF6B00;
+	border: 2px solid #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+	z-index: 2;
+}
+
+.h3vt-hotspot-editor__dot--other {
+	background: #999;
+	opacity: 0.5;
+	width: 12px;
+	height: 12px;
+	z-index: 1;
+}
+
+.h3vt-hotspot-editor__empty {
+	padding: 20px;
+	text-align: center;
+	color: #646970;
+	font-style: italic;
+	font-size: 12px;
+}
+
+/* Hide the raw number fields — the visual editor manages these */
+.h3vt-hotspot-x-field,
+.h3vt-hotspot-y-field {
+	display: none !important;
+}
