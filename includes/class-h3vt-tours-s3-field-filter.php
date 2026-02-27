@@ -54,6 +54,9 @@ class H3VT_Tours_S3_Field_Filter {
 			// Format: bypass ACF's acf_get_attachment() for S3 values.
 			add_filter( "acf/format_value/type={$type}", array( $this, 'format_value' ), 5, 3 );
 			add_filter( "acf/format_value/type={$type}", array( $this, 'restore_handler' ), 12, 3 );
+
+			// Render: inject S3 data attribute so the JS uploader can show previews.
+			add_action( "acf/render_field/type={$type}", array( $this, 'render_s3_data' ), 20 );
 		}
 	}
 
@@ -236,5 +239,63 @@ class H3VT_Tours_S3_Field_Filter {
 		}
 
 		return $value;
+	}
+
+	/**
+	 * Inject a hidden element with S3 data after ACF renders the field.
+	 *
+	 * ACF's render_field outputs the hidden input with just the attachment ID (0),
+	 * so the JS uploader cannot detect S3 values from the input alone. This method
+	 * reads the raw postmeta, and if it contains S3 JSON data, outputs a hidden
+	 * element that the JS can read to show the preview on page load.
+	 *
+	 * @param array $field ACF field config.
+	 */
+	public function render_s3_data( $field ) {
+		// Only on admin edit screens.
+		if ( ! is_admin() ) {
+			return;
+		}
+
+		$post_id = 0;
+		if ( isset( $_GET['post'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$post_id = absint( $_GET['post'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+
+		if ( ! $post_id || empty( $field['name'] ) ) {
+			return;
+		}
+
+		// For repeater sub-fields, get the raw value from the field's value (already loaded).
+		$value = $field['value'];
+
+		// Check if the loaded value is an S3 array.
+		if ( is_array( $value ) && isset( $value['id'] ) && 0 === (int) $value['id'] && ! empty( $value['url'] ) ) {
+			$json = wp_json_encode( $value );
+			printf(
+				'<div class="h3vt-s3-data" data-s3-value="%s" style="display:none;"></div>',
+				esc_attr( $json )
+			);
+			return;
+		}
+
+		// Fallback: check raw postmeta for top-level fields.
+		$raw = get_post_meta( $post_id, $field['name'], true );
+
+		if ( ! is_string( $raw ) || '' === $raw || '{' !== $raw[0] ) {
+			return;
+		}
+
+		$decoded = json_decode( $raw, true );
+
+		if ( ! is_array( $decoded ) || empty( $decoded['url'] ) || ! isset( $decoded['id'] ) || 0 !== (int) $decoded['id'] ) {
+			return;
+		}
+
+		$json = wp_json_encode( $decoded );
+		printf(
+			'<div class="h3vt-s3-data" data-s3-value="%s" style="display:none;"></div>',
+			esc_attr( $json )
+		);
 	}
 }

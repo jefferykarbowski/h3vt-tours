@@ -168,7 +168,24 @@
 	 * @param {jQuery} $dropzone Dropzone container.
 	 */
 	function loadExistingValue( $field, $preview, $dropzone ) {
-		// Check the hidden input for a JSON value.
+		// First, check for the server-rendered S3 data attribute.
+		// ACF renders the hidden input with just the ID (0), so JSON won't be in the input.
+		const $s3Data = $field.find( '.h3vt-s3-data[data-s3-value]' ).first();
+		if ( $s3Data.length ) {
+			let s3Value;
+			try {
+				s3Value = JSON.parse( $s3Data.attr( 'data-s3-value' ) );
+			} catch ( e ) {
+				// Invalid JSON — fall through.
+			}
+
+			if ( s3Value && s3Value.url && s3Value.id === 0 ) {
+				showPreview( s3Value, $field, $preview, $dropzone );
+				return;
+			}
+		}
+
+		// Fallback: check the hidden input for a JSON value (e.g. just uploaded).
 		const $input = $field.find( 'input[type=hidden].acf-image-value, input[type=hidden][data-name="value"]' ).first();
 
 		if ( ! $input.length ) {
