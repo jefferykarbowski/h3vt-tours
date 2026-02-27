@@ -95,6 +95,15 @@ class H3VT_Tours_Embed_Metabox {
 			</div>
 		</div>
 
+		<hr style="margin: 12px 0;" />
+		<div class="h3vt-embed-section">
+			<span class="h3vt-embed-label"><?php esc_html_e( 'WordPress Client Plugin', 'h3vt-tours' ); ?></span>
+			<p class="h3vt-embed-help"><?php esc_html_e( 'Install this lightweight plugin on client WordPress sites to embed tours via shortcode — no manual script tags needed.', 'h3vt-tours' ); ?></p>
+			<a href="https://github.com/jefferykarbowski/h3vt-tours-embed/releases/latest" target="_blank" rel="noopener noreferrer" class="button button-secondary" style="width:100%;text-align:center;">
+				<?php esc_html_e( 'Download Client Plugin ↗', 'h3vt-tours' ); ?>
+			</a>
+		</div>
+
 		<script>
 		(function() {
 			document.querySelectorAll('.h3vt-embed-copy').forEach(function(btn) {
