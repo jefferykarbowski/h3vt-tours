@@ -23,12 +23,16 @@ jobs:
 
       - name: PHP Syntax Check
         run: |
-          find . -name "*.php" \
+          ERRORS=$(find . -name "*.php" \
             -not -path "./vendor/*" \
             -not -path "./node_modules/*" \
             -not -path "./plugin-update-checker/*" \
             -not -path "./.git/*" \
-            | xargs -I {} php -l {} | grep -v "No syntax errors"
+            | xargs -I {} php -l {} 2>&1 | grep -v "No syntax errors" || true)
+          if [ -n "$ERRORS" ]; then
+            echo "$ERRORS"
+            exit 1
+          fi
           echo "All PHP files pass syntax check"
 
   plugin-check:
