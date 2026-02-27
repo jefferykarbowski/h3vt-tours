@@ -75,6 +75,10 @@ jobs:
             ./ build/${PLUGIN_SLUG}/
           cd build && zip -r ../${PLUGIN_SLUG}.zip ${PLUGIN_SLUG}/
 
+      - name: Build embed plugin zip
+        run: |
+          cd embed-plugin && zip -r ../h3vt-tours-embed.zip h3vt-tours-embed/
+
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
@@ -82,10 +86,13 @@ jobs:
           name: Version ${{ needs.check_version.outputs.version }}
           draft: false
           prerelease: false
-          artifacts: "h3vt-tours.zip"
+          artifacts: "h3vt-tours.zip,h3vt-tours-embed.zip"
           artifactContentType: application/zip
           body: |
             Release version ${{ needs.check_version.outputs.version }}
 
             ## Installation
             Download `h3vt-tours.zip` and upload via WordPress Plugins > Add New > Upload Plugin.
+
+            ## Client Embed Plugin
+            Download `h3vt-tours-embed.zip` and install on client WordPress sites to enable the `[h3vt_tour]` shortcode.

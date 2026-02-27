@@ -3,7 +3,7 @@
  * Plugin Name: H3VT Tours
  * Plugin URI:  https://h3vt.com
  * Description: Virtual tour builder for senior living facilities.
- * Version:     1.0.3
+ * Version:     1.0.4
  * Author:      H3VT
  * Author URI:  https://h3vt.com
  * License:     GPL-2.0+

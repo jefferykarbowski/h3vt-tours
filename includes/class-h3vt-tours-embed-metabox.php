@@ -75,7 +75,15 @@ class H3VT_Tours_Embed_Metabox {
 
 		<div class="h3vt-embed-section">
 			<span class="h3vt-embed-label"><?php esc_html_e( 'WordPress Shortcode', 'h3vt-tours' ); ?></span>
-			<p class="h3vt-embed-help"><?php esc_html_e( 'Paste into any page or post on this WordPress site.', 'h3vt-tours' ); ?></p>
+			<p class="h3vt-embed-help">
+				<?php
+				printf(
+					/* translators: %s: download link */
+					esc_html__( '%s for the client WordPress site, then paste this shortcode into any page or post:', 'h3vt-tours' ),
+					'<a href="https://github.com/jefferykarbowski/h3vt-tours/releases/latest/download/h3vt-tours-embed.zip">' . esc_html__( 'Download the Embed Plugin', 'h3vt-tours' ) . '</a>'
+				);
+				?>
+			</p>
 			<div class="h3vt-embed-row">
 				<input type="text" readonly value="<?php echo esc_attr( $shortcode ); ?>" onclick="this.select()">
 				<button type="button" class="button h3vt-embed-copy" data-copy="<?php echo esc_attr( $shortcode ); ?>">
@@ -99,7 +107,7 @@ class H3VT_Tours_Embed_Metabox {
 		<div class="h3vt-embed-section">
 			<span class="h3vt-embed-label"><?php esc_html_e( 'WordPress Client Plugin', 'h3vt-tours' ); ?></span>
 			<p class="h3vt-embed-help"><?php esc_html_e( 'Install this lightweight plugin on client WordPress sites to embed tours via shortcode — no manual script tags needed.', 'h3vt-tours' ); ?></p>
-			<a href="https://github.com/jefferykarbowski/h3vt-tours-embed/releases/latest" target="_blank" rel="noopener noreferrer" class="button button-secondary" style="width:100%;text-align:center;">
+			<a href="https://github.com/jefferykarbowski/h3vt-tours/releases/latest/download/h3vt-tours-embed.zip" target="_blank" rel="noopener noreferrer" class="button button-secondary" style="width:100%;text-align:center;">
 				<?php esc_html_e( 'Download Client Plugin ↗', 'h3vt-tours' ); ?>
 			</a>
 		</div>
