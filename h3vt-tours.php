@@ -33,7 +33,7 @@ if ( version_compare( PHP_VERSION, '7.2', '<' ) ) {
 /**
  * Plugin constants.
  */
-define( 'H3VT_TOURS_VERSION', '1.0.3' );
+define( 'H3VT_TOURS_VERSION', '1.0.4' );
 define( 'H3VT_TOURS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'H3VT_TOURS_URL', plugin_dir_url( __FILE__ ) );
 define( 'H3VT_TOURS_BASENAME', plugin_basename( __FILE__ ) );
