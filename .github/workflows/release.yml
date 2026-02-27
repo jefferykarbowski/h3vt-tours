@@ -1,0 +1,91 @@
+name: Create Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'h3vt-tours.php'
+
+jobs:
+  check_version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      create_release: ${{ steps.check_version.outputs.create_release }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Get current version
+        id: get_version
+        run: |
+          VERSION=$(grep -E "Version:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+" "h3vt-tours.php" | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" | head -n 1)
+          if [ -z "$VERSION" ]; then
+            echo "Error: No version found"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if version changed
+        id: check_version
+        run: |
+          CURRENT_VERSION=$(grep -E "Version:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+" "h3vt-tours.php" | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" | head -n 1)
+          PREVIOUS_VERSION=""
+          if git show HEAD~1:"h3vt-tours.php" &>/dev/null; then
+            PREVIOUS_VERSION=$(git show HEAD~1:"h3vt-tours.php" | grep -E "Version:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+" | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" | head -n 1)
+          fi
+          [ -z "$PREVIOUS_VERSION" ] && PREVIOUS_VERSION="0.0.0"
+          if [ "$PREVIOUS_VERSION" != "$CURRENT_VERSION" ]; then
+            echo "create_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "create_release=false" >> $GITHUB_OUTPUT
+          fi
+
+  create_release:
+    needs: check_version
+    if: needs.check_version.outputs.create_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build plugin zip
+        run: |
+          PLUGIN_SLUG="h3vt-tours"
+          mkdir -p build/${PLUGIN_SLUG}
+          rsync -av --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.gitignore' \
+            --exclude='node_modules' \
+            --exclude='src' \
+            --exclude='build' \
+            --exclude='*.md' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='webpack.config.js' \
+            --exclude='.claude' \
+            --exclude='.serena' \
+            --exclude='.codemachine' \
+            ./ build/${PLUGIN_SLUG}/
+          cd build && zip -r ../${PLUGIN_SLUG}.zip ${PLUGIN_SLUG}/
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ needs.check_version.outputs.version }}
+          name: Version ${{ needs.check_version.outputs.version }}
+          draft: false
+          prerelease: false
+          artifacts: "h3vt-tours.zip"
+          artifactContentType: application/zip
+          body: |
+            Release version ${{ needs.check_version.outputs.version }}
+
+            ## Installation
+            Download `h3vt-tours.zip` and upload via WordPress Plugins > Add New > Upload Plugin.

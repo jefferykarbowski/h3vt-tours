@@ -1,0 +1,59 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  php-lint:
+    name: PHP Lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['7.4', '8.0', '8.1', '8.2']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+
+      - name: PHP Syntax Check
+        run: |
+          find . -name "*.php" \
+            -not -path "./vendor/*" \
+            -not -path "./node_modules/*" \
+            -not -path "./plugin-update-checker/*" \
+            -not -path "./.git/*" \
+            | xargs -I {} php -l {} | grep -v "No syntax errors"
+          echo "All PHP files pass syntax check"
+
+  plugin-check:
+    name: Plugin Structure Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify plugin header
+        run: |
+          grep -q "Plugin Name:" h3vt-tours.php || (echo "Missing Plugin Name header" && exit 1)
+          grep -q "Version:" h3vt-tours.php || (echo "Missing Version header" && exit 1)
+          echo "Plugin headers OK"
+
+      - name: Verify version constants match
+        run: |
+          HEADER_VERSION=$(grep "Version:" h3vt-tours.php | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
+          CONST_VERSION=$(grep "H3VT_TOURS_VERSION" h3vt-tours.php | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
+          if [ "$HEADER_VERSION" != "$CONST_VERSION" ]; then
+            echo "Version mismatch: header=$HEADER_VERSION constant=$CONST_VERSION"
+            exit 1
+          fi
+          echo "Versions match: $HEADER_VERSION"
+
+      - name: Verify PUC is bundled
+        run: |
+          test -f plugin-update-checker/plugin-update-checker.php || (echo "PUC not found" && exit 1)
+          echo "Plugin Update Checker found"

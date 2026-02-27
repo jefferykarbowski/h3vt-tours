@@ -81,3 +81,18 @@ register_activation_hook( __FILE__, function () {
 register_deactivation_hook( __FILE__, function () {
 	flush_rewrite_rules();
 } );
+
+/**
+ * Plugin Update Checker — uses GitHub releases with .zip assets.
+ */
+require H3VT_TOURS_PATH . 'plugin-update-checker/plugin-update-checker.php';
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$h3vtUpdateChecker = PucFactory::buildUpdateChecker(
+	'https://github.com/jefferykarbowski/h3vt-tours/',
+	__FILE__,
+	'h3vt-tours'
+);
+
+// Use GitHub releases for update detection (requires tagged releases with .zip assets).
+$h3vtUpdateChecker->getVcsApi()->enableReleaseAssets();
