@@ -46,7 +46,7 @@ class H3VT_Tours_CPT {
 			'filter_items_list'     => __( 'Filter tours list', 'h3vt-tours' ),
 			'items_list_navigation' => __( 'Tours list navigation', 'h3vt-tours' ),
 			'items_list'            => __( 'Tours list', 'h3vt-tours' ),
-			'menu_name'             => _x( 'Tours', 'Admin menu text', 'h3vt-tours' ),
+			'menu_name'             => _x( 'H3VT Tours', 'Admin menu text', 'h3vt-tours' ),
 		);
 
 		$args = array(
