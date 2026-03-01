@@ -44,6 +44,9 @@ class H3VT_Tours_S3_Field_Filter {
 		}
 
 		foreach ( array( 'image', 'file' ) as $type ) {
+			// Validate: accept S3 values for required fields (id=0 fails ACF's truthy check).
+			add_filter( "acf/validate_value/type={$type}", array( $this, 'validate_s3_value' ), 5, 4 );
+
 			// Save: encode S3 array to JSON, bypass ACF's acf_idval().
 			add_filter( "acf/update_value/type={$type}", array( $this, 'update_value' ), 5, 3 );
 			add_filter( "acf/update_value/type={$type}", array( $this, 'restore_handler' ), 12, 3 );
@@ -82,6 +85,73 @@ class H3VT_Tours_S3_Field_Filter {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Validate S3 image/file values for required fields.
+	 *
+	 * ACF's required-field validation checks if the value is truthy. S3-hosted
+	 * media has id=0 which fails that check. This filter detects S3 values
+	 * (id=0 with a valid URL) and returns true to pass validation.
+	 *
+	 * @param string|bool $valid   Current validation result.
+	 * @param mixed       $value   The field value being validated.
+	 * @param array       $field   ACF field config.
+	 * @param string      $input   The input name/key.
+	 * @return string|bool
+	 */
+	public function validate_s3_value( $valid, $value, $field, $input ) {
+		// Only intervene when ACF has already flagged it as invalid (required check failed).
+		if ( false !== $valid && ! is_string( $valid ) ) {
+			return $valid;
+		}
+
+		// Check the raw $_POST data for the S3 JSON value that ACF may have reduced to "0".
+		if ( ! empty( $input ) && isset( $_POST['acf'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$value = $this->get_post_value_by_input( $input );
+		}
+
+		if ( $this->is_s3_value( $value ) ) {
+			return true;
+		}
+
+		return $valid;
+	}
+
+	/**
+	 * Extract the raw posted value from $_POST['acf'] using the input key path.
+	 *
+	 * ACF input names follow the pattern: acf[field_key] or acf[field_key][row][sub_field_key].
+	 * This method walks $_POST['acf'] to find the raw submitted value.
+	 *
+	 * @param string $input ACF input name (e.g. "acf[field_abc123]").
+	 * @return mixed The raw value or null if not found.
+	 */
+	private function get_post_value_by_input( $input ) {
+		// Parse keys from "acf[key1][key2]..." format.
+		if ( ! preg_match_all( '/\[([^\]]*)\]/', $input, $matches ) ) {
+			return null;
+		}
+
+		$keys = $matches[1];
+		$data = isset( $_POST['acf'] ) ? $_POST['acf'] : null; // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput
+
+		foreach ( $keys as $key ) {
+			if ( ! is_array( $data ) || ! array_key_exists( $key, $data ) ) {
+				return null;
+			}
+			$data = $data[ $key ];
+		}
+
+		// The value might be a JSON string from our JS uploader.
+		if ( is_string( $data ) && '' !== $data && '{' === $data[0] ) {
+			$decoded = json_decode( $data, true );
+			if ( is_array( $decoded ) ) {
+				return $decoded;
+			}
+		}
+
+		return $data;
 	}
 
 	/**
