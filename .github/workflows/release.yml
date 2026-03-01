@@ -72,6 +72,8 @@ jobs:
             --exclude='.claude' \
             --exclude='.serena' \
             --exclude='.codemachine' \
+            --exclude='embed-plugin' \
+            --exclude='scripts' \
             ./ build/${PLUGIN_SLUG}/
           cd build && zip -r ../${PLUGIN_SLUG}.zip ${PLUGIN_SLUG}/
 

@@ -180,6 +180,7 @@
 			}
 
 			if ( s3Value && s3Value.url && s3Value.id === 0 ) {
+				storeValue( $field, s3Value );
 				showPreview( s3Value, $field, $preview, $dropzone );
 				return;
 			}
@@ -552,3 +553,50 @@
 		acf.addAction( 'append_field/type=file', onFieldReady );
 	}
 } )( jQuery, window.acf );
+
+/**
+ * Client-side ACF validation override for S3-stored image/file fields.
+ *
+ * ACF's native validation rejects image fields with id=0. This filter
+ * intercepts validation and accepts S3 values (JSON with url + id=0).
+ */
+( function ( acf ) {
+	'use strict';
+
+	if ( ! acf || ! acf.addFilter ) {
+		return;
+	}
+
+	acf.addFilter( 'validation_complete', function ( json, $form ) {
+		if ( ! json || ! json.errors || ! json.errors.length ) {
+			return json;
+		}
+
+		// Filter out errors for fields that have valid S3 values.
+		json.errors = json.errors.filter( function ( error ) {
+			var $input = $form.find( '[name="' + error.input + '"]' );
+			if ( ! $input.length ) {
+				return true; // Keep error — can't find input.
+			}
+
+			var val = $input.val();
+			if ( ! val || val === '0' || val === '' ) {
+				return true; // Keep error — genuinely empty.
+			}
+
+			// Check if it's a valid S3 JSON value.
+			try {
+				var parsed = JSON.parse( val );
+				if ( parsed && parsed.url && parsed.id === 0 ) {
+					return false; // Remove error — valid S3 value.
+				}
+			} catch ( e ) {
+				// Not JSON — keep the error.
+			}
+
+			return true;
+		} );
+
+		return json;
+	} );
+} )( window.acf );
