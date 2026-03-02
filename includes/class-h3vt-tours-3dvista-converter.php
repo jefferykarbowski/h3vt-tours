@@ -7,6 +7,9 @@
  * ACF validates natively), and creates a draft h3vt_tour post with
  * all ACF fields populated.
  *
+ * Image uploads are handled individually via AJAX to avoid server
+ * timeout (503) errors with large panorama files.
+ *
  * @package H3VT_Tours
  */
 
@@ -20,6 +23,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 class H3VT_Tours_3DVista_Converter {
 
 	/**
+	 * Transient key prefix for import jobs.
+	 *
+	 * @var string
+	 */
+	const TRANSIENT_PREFIX = 'h3vt_3dvista_job_';
+
+	/**
 	 * Image extensions considered valid panorama files.
 	 *
 	 * @var array
@@ -27,12 +37,16 @@ class H3VT_Tours_3DVista_Converter {
 	private $image_extensions = array( 'jpg', 'jpeg', 'png', 'webp' );
 
 	/**
-	 * Constructor — hooks admin menu and form handler.
+	 * Constructor — hooks admin menu, form handler, and AJAX endpoints.
 	 */
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_menu_page' ) );
 		add_action( 'admin_post_h3vt_3dvista_import', array( $this, 'handle_import' ) );
 		add_action( 'admin_notices', array( $this, 'display_admin_notices' ) );
+
+		// AJAX endpoints for chunked image upload.
+		add_action( 'wp_ajax_h3vt_3dvista_upload_image', array( $this, 'ajax_upload_image' ) );
+		add_action( 'wp_ajax_h3vt_3dvista_finalize', array( $this, 'ajax_finalize' ) );
 	}
 
 	/**
@@ -50,13 +64,30 @@ class H3VT_Tours_3DVista_Converter {
 	}
 
 	/**
-	 * Render the import form.
+	 * Render the import form or progress UI.
 	 */
 	public function render_page() {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			return;
 		}
 
+		// Check for an active import job via query param.
+		$job_id = isset( $_GET['job'] ) ? sanitize_key( $_GET['job'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( $job_id ) {
+			$job = get_transient( self::TRANSIENT_PREFIX . $job_id );
+			if ( $job ) {
+				$this->render_progress_page( $job_id, $job );
+				return;
+			}
+		}
+
+		$this->render_upload_form();
+	}
+
+	/**
+	 * Render the upload form.
+	 */
+	private function render_upload_form() {
 		$templates = get_posts( array(
 			'post_type'      => 'h3vt_tour_template',
 			'posts_per_page' => -1,
@@ -126,7 +157,149 @@ class H3VT_Tours_3DVista_Converter {
 	}
 
 	/**
+	 * Render the progress page with AJAX-driven image uploads.
+	 *
+	 * @param string $job_id The import job ID.
+	 * @param array  $job    The import job data.
+	 */
+	private function render_progress_page( $job_id, $job ) {
+		$total  = count( $job['images'] );
+		$nonce  = wp_create_nonce( 'h3vt_3dvista_ajax' );
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Importing Tour...', 'h3vt-tours' ); ?></h1>
+
+			<div id="h3vt-import-progress">
+				<p id="h3vt-import-status">
+					<?php
+					printf(
+						/* translators: 1: current count, 2: total count */
+						esc_html__( 'Uploading image %1$d of %2$d...', 'h3vt-tours' ),
+						1,
+						$total
+					);
+					?>
+				</p>
+
+				<div style="background:#ddd;border-radius:4px;overflow:hidden;height:30px;max-width:600px;margin:16px 0;">
+					<div id="h3vt-import-bar" style="background:#2271b1;height:100%;width:0%;transition:width 0.3s;border-radius:4px;"></div>
+				</div>
+
+				<p id="h3vt-import-detail" style="color:#666;font-style:italic;"></p>
+			</div>
+
+			<div id="h3vt-import-result" style="display:none;"></div>
+		</div>
+
+		<script>
+		(function() {
+			var jobId    = <?php echo wp_json_encode( $job_id ); ?>;
+			var nonce    = <?php echo wp_json_encode( $nonce ); ?>;
+			var total    = <?php echo intval( $total ); ?>;
+			var ajaxUrl  = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+			var current  = 0;
+			var errors   = [];
+
+			var statusEl = document.getElementById('h3vt-import-status');
+			var barEl    = document.getElementById('h3vt-import-bar');
+			var detailEl = document.getElementById('h3vt-import-detail');
+			var resultEl = document.getElementById('h3vt-import-result');
+			var progressEl = document.getElementById('h3vt-import-progress');
+
+			function uploadNext() {
+				if (current >= total) {
+					finalize();
+					return;
+				}
+
+				var num = current + 1;
+				statusEl.textContent = <?php echo wp_json_encode( __( 'Uploading image ', 'h3vt-tours' ) ); ?> + num + <?php echo wp_json_encode( __( ' of ', 'h3vt-tours' ) ); ?> + total + '...';
+				barEl.style.width = Math.round((num / (total + 1)) * 100) + '%';
+
+				var data = new FormData();
+				data.append('action', 'h3vt_3dvista_upload_image');
+				data.append('_ajax_nonce', nonce);
+				data.append('job_id', jobId);
+				data.append('index', current);
+
+				var xhr = new XMLHttpRequest();
+				xhr.open('POST', ajaxUrl);
+				xhr.onload = function() {
+					try {
+						var resp = JSON.parse(xhr.responseText);
+						if (resp.success) {
+							detailEl.textContent = resp.data.filename || '';
+						} else {
+							var msg = (resp.data && resp.data.message) ? resp.data.message : 'Unknown error';
+							errors.push(msg);
+							detailEl.textContent = msg;
+						}
+					} catch(e) {
+						errors.push('Unexpected response for image ' + num);
+					}
+					current++;
+					uploadNext();
+				};
+				xhr.onerror = function() {
+					errors.push('Network error uploading image ' + num);
+					current++;
+					uploadNext();
+				};
+				xhr.send(data);
+			}
+
+			function finalize() {
+				statusEl.textContent = <?php echo wp_json_encode( __( 'Finalizing tour...', 'h3vt-tours' ) ); ?>;
+				barEl.style.width = '95%';
+				detailEl.textContent = '';
+
+				var data = new FormData();
+				data.append('action', 'h3vt_3dvista_finalize');
+				data.append('_ajax_nonce', nonce);
+				data.append('job_id', jobId);
+
+				var xhr = new XMLHttpRequest();
+				xhr.open('POST', ajaxUrl);
+				xhr.onload = function() {
+					barEl.style.width = '100%';
+					progressEl.style.display = 'none';
+					resultEl.style.display = '';
+
+					try {
+						var resp = JSON.parse(xhr.responseText);
+						if (resp.success) {
+							var html = '<div class="notice notice-success"><p>' + resp.data.message + '</p></div>';
+							if (errors.length > 0) {
+								html += '<div class="notice notice-warning"><p>' + <?php echo wp_json_encode( __( 'Some images failed to upload: ', 'h3vt-tours' ) ); ?> + errors.join('; ') + '</p></div>';
+							}
+							resultEl.innerHTML = html;
+						} else {
+							resultEl.innerHTML = '<div class="notice notice-error"><p>' + ((resp.data && resp.data.message) || 'Finalization failed.') + '</p></div>';
+						}
+					} catch(e) {
+						resultEl.innerHTML = '<div class="notice notice-error"><p>Unexpected response during finalization.</p></div>';
+					}
+				};
+				xhr.onerror = function() {
+					progressEl.style.display = 'none';
+					resultEl.style.display = '';
+					resultEl.innerHTML = '<div class="notice notice-error"><p>Network error during finalization.</p></div>';
+				};
+				xhr.send(data);
+			}
+
+			uploadNext();
+		})();
+		</script>
+		<?php
+	}
+
+	/**
 	 * Handle the import form submission.
+	 *
+	 * Validates input, extracts the zip, catalogs images, creates the
+	 * draft tour post, then redirects to the progress page where AJAX
+	 * handles the actual image uploads one at a time.
 	 */
 	public function handle_import() {
 		if ( ! check_admin_referer( 'h3vt_3dvista_import', 'h3vt_3dvista_nonce' ) ) {
@@ -162,8 +335,7 @@ class H3VT_Tours_3DVista_Converter {
 		$default_category = sanitize_text_field( wp_unslash( $_POST['h3vt_default_category'] ?? '' ) );
 
 		// Extract zip.
-		$tmp_name = $_FILES['h3vt_zip_file']['tmp_name'];
-		$extract_dir = $this->extract_zip( $tmp_name );
+		$extract_dir = $this->extract_zip( $_FILES['h3vt_zip_file']['tmp_name'] );
 		if ( is_wp_error( $extract_dir ) ) {
 			$this->add_admin_notice( $extract_dir->get_error_message(), 'error' );
 			$this->redirect_back();
@@ -180,13 +352,6 @@ class H3VT_Tours_3DVista_Converter {
 			$this->add_admin_notice( __( 'No panorama images found in the archive media/ folder.', 'h3vt-tours' ), 'error' );
 			$this->redirect_back();
 			return;
-		}
-
-		// Require media handling functions.
-		if ( ! function_exists( 'media_handle_sideload' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/image.php';
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-			require_once ABSPATH . 'wp-admin/includes/media.php';
 		}
 
 		// Create the tour post as a draft.
@@ -210,64 +375,144 @@ class H3VT_Tours_3DVista_Converter {
 			return;
 		}
 
-		// Upload images to media library.
-		$attachment_ids = array();
-		$upload_errors  = array();
+		// Store job state in a transient for AJAX processing.
+		$job_id = wp_generate_password( 12, false );
+		$job    = array(
+			'tour_id'          => $tour_id,
+			'extract_dir'      => $extract_dir,
+			'images'           => $images,
+			'template_id'      => $template_id,
+			'default_category' => $default_category,
+			'parsed_title'     => $parsed_title,
+			'attachment_ids'   => array(),
+		);
 
-		foreach ( $images as $image_path ) {
-			$att_id = $this->upload_image_to_media_library( $image_path, $tour_id );
-			if ( is_wp_error( $att_id ) ) {
-				$upload_errors[] = basename( $image_path ) . ': ' . $att_id->get_error_message();
-			} else {
-				$attachment_ids[] = array(
-					'id'       => $att_id,
-					'filename' => basename( $image_path ),
-				);
+		// 1-hour expiry — plenty of time for large imports.
+		set_transient( self::TRANSIENT_PREFIX . $job_id, $job, HOUR_IN_SECONDS );
+
+		// Redirect to progress page.
+		$url = admin_url( 'edit.php?post_type=h3vt_tour&page=h3vt-tours-3dvista-import&job=' . $job_id );
+		wp_safe_redirect( $url );
+		exit;
+	}
+
+	/**
+	 * AJAX handler: upload a single image from the extracted archive.
+	 *
+	 * Expects POST params: job_id, index.
+	 */
+	public function ajax_upload_image() {
+		check_ajax_referer( 'h3vt_3dvista_ajax' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'h3vt-tours' ) ) );
+		}
+
+		$job_id = sanitize_key( $_POST['job_id'] ?? '' );
+		$index  = absint( $_POST['index'] ?? 0 );
+
+		$job = get_transient( self::TRANSIENT_PREFIX . $job_id );
+		if ( ! $job ) {
+			wp_send_json_error( array( 'message' => __( 'Import job expired or not found.', 'h3vt-tours' ) ) );
+		}
+
+		if ( ! isset( $job['images'][ $index ] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Image index out of range.', 'h3vt-tours' ) ) );
+		}
+
+		// Require media handling functions.
+		if ( ! function_exists( 'media_handle_sideload' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+		}
+
+		$image_path = $job['images'][ $index ];
+		$att_id     = $this->upload_image_to_media_library( $image_path, $job['tour_id'] );
+
+		if ( is_wp_error( $att_id ) ) {
+			wp_send_json_error( array(
+				'message'  => basename( $image_path ) . ': ' . $att_id->get_error_message(),
+				'filename' => basename( $image_path ),
+			) );
+		}
+
+		// Store attachment ID in the job transient.
+		$job['attachment_ids'][ $index ] = array(
+			'id'       => $att_id,
+			'filename' => basename( $image_path ),
+		);
+		set_transient( self::TRANSIENT_PREFIX . $job_id, $job, HOUR_IN_SECONDS );
+
+		wp_send_json_success( array(
+			'attachment_id' => $att_id,
+			'filename'      => basename( $image_path ),
+			'index'         => $index,
+		) );
+	}
+
+	/**
+	 * AJAX handler: finalize the import — populate ACF fields and clean up.
+	 *
+	 * Expects POST param: job_id.
+	 */
+	public function ajax_finalize() {
+		check_ajax_referer( 'h3vt_3dvista_ajax' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'h3vt-tours' ) ) );
+		}
+
+		$job_id = sanitize_key( $_POST['job_id'] ?? '' );
+		$job    = get_transient( self::TRANSIENT_PREFIX . $job_id );
+
+		if ( ! $job ) {
+			wp_send_json_error( array( 'message' => __( 'Import job expired or not found.', 'h3vt-tours' ) ) );
+		}
+
+		// Collect successfully uploaded attachments (preserving order).
+		$attachment_ids = array();
+		foreach ( $job['images'] as $i => $path ) {
+			if ( isset( $job['attachment_ids'][ $i ] ) ) {
+				$attachment_ids[] = $job['attachment_ids'][ $i ];
 			}
 		}
 
+		$tour_id = $job['tour_id'];
+
 		if ( empty( $attachment_ids ) ) {
 			wp_delete_post( $tour_id, true );
-			$this->cleanup( $extract_dir );
-			$this->add_admin_notice( __( 'All image uploads failed. Tour was not created.', 'h3vt-tours' ), 'error' );
-			$this->redirect_back();
-			return;
+			$this->cleanup( $job['extract_dir'] );
+			delete_transient( self::TRANSIENT_PREFIX . $job_id );
+			wp_send_json_error( array( 'message' => __( 'All image uploads failed. Tour was not created.', 'h3vt-tours' ) ) );
 		}
 
 		// Populate ACF fields.
-		$this->populate_acf_fields( $tour_id, $attachment_ids, $template_id, $default_category );
+		$this->populate_acf_fields( $tour_id, $attachment_ids, $job['template_id'], $job['default_category'] );
 
-		// Clean up.
-		$this->cleanup( $extract_dir );
+		// Clean up temp directory and transient.
+		$this->cleanup( $job['extract_dir'] );
+		delete_transient( self::TRANSIENT_PREFIX . $job_id );
 
 		// Build success message.
 		$edit_link = get_edit_post_link( $tour_id, 'raw' );
 		$message   = sprintf(
 			/* translators: 1: slide count, 2: opening anchor tag, 3: closing anchor tag */
-			__( 'Tour imported with %1$d slides. %2$sEdit tour%3$s', 'h3vt-tours' ),
+			__( 'Tour imported with %1$d slides. %2$sEdit tour &rarr;%3$s', 'h3vt-tours' ),
 			count( $attachment_ids ),
 			'<a href="' . esc_url( $edit_link ) . '">',
 			'</a>'
 		);
 
-		if ( ! empty( $parsed_title ) ) {
+		if ( ! empty( $job['parsed_title'] ) ) {
 			$message .= ' ' . sprintf(
 				/* translators: %s: parsed title from the 3DVista archive */
 				__( '(Source: %s)', 'h3vt-tours' ),
-				esc_html( $parsed_title )
+				esc_html( $job['parsed_title'] )
 			);
 		}
 
-		if ( ! empty( $upload_errors ) ) {
-			$message .= '<br>' . sprintf(
-				/* translators: %s: error details */
-				__( 'Some images failed to upload: %s', 'h3vt-tours' ),
-				esc_html( implode( '; ', $upload_errors ) )
-			);
-		}
-
-		$this->add_admin_notice( $message, 'success' );
-		$this->redirect_back();
+		wp_send_json_success( array( 'message' => $message ) );
 	}
 
 	/**
@@ -481,11 +726,6 @@ class H3VT_Tours_3DVista_Converter {
 	/**
 	 * Convert a filename (often a UUID) to a human-readable title.
 	 *
-	 * Examples:
-	 *   "a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg" → "A1b2c3d4 E5f6 7890 Abcd Ef1234567890"
-	 *   "living-room-panorama.jpg" → "Living Room Panorama"
-	 *   "01-core.jpg" → "01 Core"
-	 *
 	 * @param string $filename The filename (with or without extension).
 	 * @return string Human-readable title.
 	 */
@@ -504,6 +744,10 @@ class H3VT_Tours_3DVista_Converter {
 	 * @param string $dir Directory to delete.
 	 */
 	private function cleanup( $dir ) {
+		if ( empty( $dir ) || ! is_dir( $dir ) ) {
+			return;
+		}
+
 		$upload_dir = wp_upload_dir();
 		$base       = realpath( $upload_dir['basedir'] );
 		$target     = realpath( $dir );
@@ -575,7 +819,7 @@ class H3VT_Tours_3DVista_Converter {
 	}
 
 	/**
-	 * Redirect back to the import page.
+	 * Redirect back to the import form page.
 	 */
 	private function redirect_back() {
 		$url = admin_url( 'edit.php?post_type=h3vt_tour&page=h3vt-tours-3dvista-import' );
