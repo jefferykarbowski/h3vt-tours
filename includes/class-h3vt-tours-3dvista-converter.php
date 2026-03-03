@@ -345,7 +345,10 @@ class H3VT_Tours_3DVista_Converter {
 		// Parse tour title from index.htm for reference.
 		$parsed_title = $this->parse_tour_title( $extract_dir );
 
-		// Catalog panorama images.
+		// Parse 3DVista metadata (titles, descriptions, categories, etc.).
+		$metadata = $this->parse_3dvista_metadata( $extract_dir );
+
+		// Catalog panorama images (excludes thumbnails and floorplan images).
 		$images = $this->catalog_panoramas( $extract_dir );
 		if ( empty( $images ) ) {
 			$this->cleanup( $extract_dir );
@@ -353,6 +356,16 @@ class H3VT_Tours_3DVista_Converter {
 			$this->redirect_back();
 			return;
 		}
+
+		// Reorder panoramas to match the 3DVista presentation order.
+		$images = $this->order_images_by_metadata( $images, $metadata );
+
+		// Catalog floorplan images separately.
+		$floorplan_images = $this->catalog_floorplan_images( $extract_dir, $metadata );
+		$panorama_count   = count( $images );
+
+		// Merge panorama + floorplan images into a single upload queue.
+		$all_images = array_merge( $images, $floorplan_images );
 
 		// Create the tour post as a draft.
 		$tour_id = wp_insert_post( array(
@@ -380,11 +393,13 @@ class H3VT_Tours_3DVista_Converter {
 		$job    = array(
 			'tour_id'          => $tour_id,
 			'extract_dir'      => $extract_dir,
-			'images'           => $images,
+			'images'           => $all_images,
 			'template_id'      => $template_id,
 			'default_category' => $default_category,
 			'parsed_title'     => $parsed_title,
 			'attachment_ids'   => array(),
+			'panorama_count'   => $panorama_count,
+			'metadata'         => $metadata,
 		);
 
 		// 1-hour expiry — plenty of time for large imports.
@@ -495,8 +510,14 @@ class H3VT_Tours_3DVista_Converter {
 			wp_send_json_error( array( 'message' => __( 'All image uploads failed. Tour was not created.', 'h3vt-tours' ) ) );
 		}
 
-		// Populate ACF fields.
-		$this->populate_acf_fields( $tour_id, $attachment_ids, $job['template_id'], $job['default_category'] );
+		// Partition attachments into panoramas and floorplans.
+		$panorama_count  = isset( $job['panorama_count'] ) ? intval( $job['panorama_count'] ) : count( $attachment_ids );
+		$panorama_atts   = array_slice( $attachment_ids, 0, $panorama_count );
+		$floorplan_atts  = array_slice( $attachment_ids, $panorama_count );
+		$metadata        = isset( $job['metadata'] ) ? $job['metadata'] : array();
+
+		// Populate ACF fields with metadata.
+		$this->populate_acf_fields( $tour_id, $panorama_atts, $job['template_id'], $job['default_category'], $metadata, $floorplan_atts );
 
 		// Clean up temp directory and transient.
 		$this->cleanup( $job['extract_dir'] );
@@ -507,7 +528,7 @@ class H3VT_Tours_3DVista_Converter {
 		$message   = sprintf(
 			/* translators: 1: slide count, 2: opening anchor tag, 3: closing anchor tag */
 			__( 'Tour imported with %1$d slides. %2$sEdit tour &rarr;%3$s', 'h3vt-tours' ),
-			count( $attachment_ids ),
+			count( $panorama_atts ),
 			'<a href="' . esc_url( $edit_link ) . '">',
 			'</a>'
 		);
@@ -589,9 +610,427 @@ class H3VT_Tours_3DVista_Converter {
 	}
 
 	/**
+	 * Parse the locale/en.txt translation file from a 3DVista archive.
+	 *
+	 * The file uses key = value format with # comments, ## section headers,
+	 * and trailing backslash line continuations.
+	 *
+	 * @param string $extract_dir Extracted archive directory.
+	 * @return array Associative array of translation key => value.
+	 */
+	private function parse_locale( $extract_dir ) {
+		$locale_file = $extract_dir . '/locale/en.txt';
+		if ( ! file_exists( $locale_file ) ) {
+			return array();
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$raw = file_get_contents( $locale_file );
+		if ( false === $raw ) {
+			return array();
+		}
+
+		$translations = array();
+		$lines        = explode( "\n", $raw );
+		$pending_key  = '';
+		$pending_val  = '';
+
+		foreach ( $lines as $line ) {
+			// Handle line continuation from previous line.
+			if ( '' !== $pending_key ) {
+				$trimmed = rtrim( $line );
+				if ( '\\' === substr( $trimmed, -1 ) ) {
+					$pending_val .= ' ' . trim( substr( $trimmed, 0, -1 ) );
+					continue;
+				}
+				$pending_val .= ' ' . trim( $trimmed );
+				$translations[ $pending_key ] = trim( $pending_val );
+				$pending_key = '';
+				$pending_val = '';
+				continue;
+			}
+
+			$line = rtrim( $line );
+
+			// Skip empty lines, comments, and section headers.
+			if ( '' === $line || '#' === $line[0] ) {
+				continue;
+			}
+
+			// Parse key = value.
+			$eq_pos = strpos( $line, '=' );
+			if ( false === $eq_pos ) {
+				continue;
+			}
+
+			$key   = trim( substr( $line, 0, $eq_pos ) );
+			$value = ltrim( substr( $line, $eq_pos + 1 ) );
+
+			// Check for line continuation (trailing backslash).
+			$value_trimmed = rtrim( $value );
+			if ( '\\' === substr( $value_trimmed, -1 ) ) {
+				$pending_key = $key;
+				$pending_val = substr( $value_trimmed, 0, -1 );
+				continue;
+			}
+
+			$translations[ $key ] = trim( $value );
+		}
+
+		// Flush any remaining continuation.
+		if ( '' !== $pending_key ) {
+			$translations[ $pending_key ] = trim( $pending_val );
+		}
+
+		return $translations;
+	}
+
+	/**
+	 * Parse 3DVista metadata from script_general.js and locale files.
+	 *
+	 * Returns structured metadata including slide titles, descriptions,
+	 * navigation categories, floorplans, and embedded tour URLs.
+	 *
+	 * @param string $extract_dir Extracted archive directory.
+	 * @return array {
+	 *     @type array  $photos                  Keyed by image filename => { title, description, category }.
+	 *     @type array  $nav_categories           Unique category labels in presentation order.
+	 *     @type array  $main_playlist_filenames  Ordered image filenames from mainPlayList.
+	 *     @type array  $floorplans               Array of { label, image_file, map_id }.
+	 *     @type array  $embedded_tours            Array of { label, url }.
+	 * }
+	 */
+	private function parse_3dvista_metadata( $extract_dir ) {
+		$metadata = array(
+			'photos'                 => array(),
+			'nav_categories'         => array(),
+			'main_playlist_filenames' => array(),
+			'floorplans'             => array(),
+			'embedded_tours'         => array(),
+		);
+
+		$script_file = $extract_dir . '/script_general.js';
+		if ( ! file_exists( $script_file ) ) {
+			return $metadata;
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$content = file_get_contents( $script_file );
+		if ( false === $content ) {
+			return $metadata;
+		}
+
+		$locale = $this->parse_locale( $extract_dir );
+
+		// 1. Extract Photo objects: id, image URL, data.label.
+		// Pattern: {"image":...,"id":"album_XXX_0",...,"class":"Photo"}
+		$photo_map = array(); // photo_id => { filename, title }
+		if ( preg_match_all(
+			'/"id"\s*:\s*"(album_[^"]+_0)"\s*,\s*[^}]*"class"\s*:\s*"Photo"/',
+			$content,
+			$id_matches
+		) ) {
+			foreach ( $id_matches[1] as $photo_id ) {
+				// Find the image URL for this photo.
+				$filename = '';
+				$pattern  = '/"url"\s*:\s*"media\/(' . preg_quote( $photo_id, '/' ) . '\.[^"]+)"/';
+				if ( preg_match( $pattern, $content, $url_match ) ) {
+					$filename = $url_match[1];
+				}
+
+				// Get title from locale first, then data.label.
+				$title = '';
+				$label_key = $photo_id . '.label';
+				if ( isset( $locale[ $label_key ] ) ) {
+					$title = $locale[ $label_key ];
+				}
+
+				$photo_map[ $photo_id ] = array(
+					'filename' => $filename,
+					'title'    => $title,
+				);
+			}
+		}
+
+		// 2. Build album map from locale translations.
+		// Locale keys like "album_XXX.label" and "album_XXX.subtitle"
+		// identify albums without needing to regex-match PhotoAlbum objects
+		// (which have nested braces that break simple regex patterns).
+		$album_map = array(); // album_id => { label, subtitle }
+		foreach ( $locale as $key => $value ) {
+			if ( 0 !== strpos( $key, 'album_' ) ) {
+				continue;
+			}
+
+			// Extract the album_id and field from keys like "album_XXX.label".
+			$dot_pos = strrpos( $key, '.' );
+			if ( false === $dot_pos ) {
+				continue;
+			}
+
+			$album_id = substr( $key, 0, $dot_pos );
+			$field    = substr( $key, $dot_pos + 1 );
+
+			// Skip photo-level keys (album_XXX_0.label) — those are slide titles.
+			if ( preg_match( '/_\d+$/', $album_id ) ) {
+				continue;
+			}
+
+			if ( ! isset( $album_map[ $album_id ] ) ) {
+				$album_map[ $album_id ] = array(
+					'label'    => '',
+					'subtitle' => '',
+				);
+			}
+
+			if ( 'label' === $field ) {
+				$album_map[ $album_id ]['label'] = $value;
+			} elseif ( 'subtitle' === $field ) {
+				$album_map[ $album_id ]['subtitle'] = $value;
+			}
+		}
+
+		// 3. Extract mainPlayList — ordered album references.
+		// Pattern: "media":"this.album_XXX" inside mainPlayList items.
+		$playlist_album_ids = array();
+		$playlist_pos       = strpos( $content, '"id":"mainPlayList"' );
+		if ( false !== $playlist_pos ) {
+			// Search backwards for the items array.
+			$items_start = strrpos( substr( $content, 0, $playlist_pos ), '"items"' );
+			if ( false !== $items_start ) {
+				$playlist_section = substr( $content, $items_start, $playlist_pos - $items_start );
+				if ( preg_match_all( '/"media"\s*:\s*"this\.(album_[^"]+)"/', $playlist_section, $pl_matches ) ) {
+					$playlist_album_ids = $pl_matches[1];
+				}
+			}
+		}
+
+		// 4. Map photos to albums and build the final photos array.
+		// A photo_id like album_XXX_0 belongs to album_id album_XXX.
+		$nav_categories_seen = array();
+
+		foreach ( $playlist_album_ids as $album_id ) {
+			$album_info = isset( $album_map[ $album_id ] ) ? $album_map[ $album_id ] : null;
+			$category   = $album_info ? $album_info['label'] : '';
+
+			// Track unique categories in playlist order.
+			if ( '' !== $category && ! isset( $nav_categories_seen[ $category ] ) ) {
+				$nav_categories_seen[ $category ] = true;
+				$metadata['nav_categories'][]     = $category;
+			}
+
+			// Find the photo for this album (album_id + '_0').
+			$photo_id = $album_id . '_0';
+			if ( isset( $photo_map[ $photo_id ] ) ) {
+				$photo    = $photo_map[ $photo_id ];
+				$filename = $photo['filename'];
+
+				if ( '' !== $filename ) {
+					$metadata['main_playlist_filenames'][] = $filename;
+
+					$title = $photo['title'];
+					if ( '' === $title && $album_info ) {
+						$title = $album_info['label'];
+					}
+
+					$description = $album_info ? $album_info['subtitle'] : '';
+
+					$metadata['photos'][ $filename ] = array(
+						'title'       => $title,
+						'description' => $description,
+						'category'    => $category,
+					);
+				}
+			}
+		}
+
+		// 5. Add any photos not in the mainPlayList.
+		foreach ( $photo_map as $photo_id => $photo ) {
+			$filename = $photo['filename'];
+			if ( '' !== $filename && ! isset( $metadata['photos'][ $filename ] ) ) {
+				// Derive album_id by stripping the trailing _0.
+				$album_id   = preg_replace( '/_0$/', '', $photo_id );
+				$album_info = isset( $album_map[ $album_id ] ) ? $album_map[ $album_id ] : null;
+
+				$title = $photo['title'];
+				if ( '' === $title && $album_info ) {
+					$title = $album_info['label'];
+				}
+
+				$metadata['photos'][ $filename ] = array(
+					'title'       => $title,
+					'description' => $album_info ? $album_info['subtitle'] : '',
+					'category'    => $album_info ? $album_info['label'] : '',
+				);
+			}
+		}
+
+		// 6. Extract floorplan (Map) data.
+		if ( preg_match_all( '/"id"\s*:\s*"(map_[^"]+)"[^}]*"class"\s*:\s*"Map"/', $content, $map_matches ) ) {
+			foreach ( $map_matches[1] as $map_id ) {
+				$label     = '';
+				$label_key = $map_id . '.label';
+				if ( isset( $locale[ $label_key ] ) ) {
+					$label = $locale[ $label_key ];
+				}
+
+				// Find floorplan image files from locale imlevel entries.
+				$image_file = '';
+				foreach ( $locale as $key => $value ) {
+					if ( 0 === strpos( $key, 'imlevel_' ) && false !== strpos( $key, '.url' ) ) {
+						if ( false !== strpos( $value, $map_id ) ) {
+							// Use the highest-resolution (level 0).
+							if ( false !== strpos( $value, '_0.' ) || '' === $image_file ) {
+								$image_file = str_replace( 'media/', '', $value );
+							}
+						}
+					}
+				}
+
+				if ( '' !== $image_file ) {
+					$metadata['floorplans'][] = array(
+						'label'      => $label,
+						'image_file' => $image_file,
+						'map_id'     => $map_id,
+					);
+				}
+			}
+		}
+
+		// Also match Map objects where class comes before id.
+		if ( preg_match_all( '/"class"\s*:\s*"Map"[^}]*"id"\s*:\s*"(map_[^"]+)"/', $content, $map_rev ) ) {
+			$existing_ids = array_column( $metadata['floorplans'], 'map_id' );
+			foreach ( $map_rev[1] as $map_id ) {
+				if ( in_array( $map_id, $existing_ids, true ) ) {
+					continue;
+				}
+
+				$label     = '';
+				$label_key = $map_id . '.label';
+				if ( isset( $locale[ $label_key ] ) ) {
+					$label = $locale[ $label_key ];
+				}
+
+				$image_file = '';
+				foreach ( $locale as $key => $value ) {
+					if ( 0 === strpos( $key, 'imlevel_' ) && false !== strpos( $key, '.url' ) ) {
+						if ( false !== strpos( $value, $map_id ) ) {
+							if ( false !== strpos( $value, '_0.' ) || '' === $image_file ) {
+								$image_file = str_replace( 'media/', '', $value );
+							}
+						}
+					}
+				}
+
+				if ( '' !== $image_file ) {
+					$metadata['floorplans'][] = array(
+						'label'      => $label,
+						'image_file' => $image_file,
+						'map_id'     => $map_id,
+					);
+				}
+			}
+		}
+
+		// 7. Extract embedded tour URLs (Matterport, etc.) from locale.
+		foreach ( $locale as $key => $value ) {
+			if ( 0 !== strpos( $key, 'WebFrame_' ) || false === strpos( $key, '.url' ) ) {
+				continue;
+			}
+
+			// Skip mobile duplicates and Google Maps embeds.
+			if ( false !== strpos( $key, '_mobile' ) ) {
+				continue;
+			}
+			if ( false !== strpos( $value, 'google.com/maps' ) ) {
+				continue;
+			}
+
+			// Derive a label from the URL (e.g. "Matterport Tour").
+			$label = '3D Tour';
+			if ( false !== strpos( $value, 'matterport.com' ) ) {
+				$label = 'Matterport Tour';
+			}
+
+			$metadata['embedded_tours'][] = array(
+				'label' => $label,
+				'url'   => $value,
+			);
+		}
+
+		return $metadata;
+	}
+
+	/**
+	 * Find floorplan image files in the extracted archive.
+	 *
+	 * @param string $extract_dir Extracted archive directory.
+	 * @param array  $metadata    Parsed 3DVista metadata.
+	 * @return array List of absolute file paths for floorplan images.
+	 */
+	private function catalog_floorplan_images( $extract_dir, $metadata ) {
+		if ( empty( $metadata['floorplans'] ) ) {
+			return array();
+		}
+
+		$media_dir = $extract_dir . '/media';
+		$images    = array();
+
+		foreach ( $metadata['floorplans'] as $floorplan ) {
+			$file_path = $media_dir . '/' . $floorplan['image_file'];
+			if ( file_exists( $file_path ) ) {
+				$images[] = $file_path;
+			}
+		}
+
+		return $images;
+	}
+
+	/**
+	 * Reorder images to match the mainPlayList presentation order.
+	 *
+	 * Images not in the playlist are appended at the end.
+	 *
+	 * @param array $images   List of absolute file paths.
+	 * @param array $metadata Parsed 3DVista metadata.
+	 * @return array Reordered list of absolute file paths.
+	 */
+	private function order_images_by_metadata( $images, $metadata ) {
+		if ( empty( $metadata['main_playlist_filenames'] ) ) {
+			return $images;
+		}
+
+		// Build a map of basename => full path.
+		$by_basename = array();
+		foreach ( $images as $path ) {
+			$by_basename[ basename( $path ) ] = $path;
+		}
+
+		$ordered   = array();
+		$used      = array();
+
+		foreach ( $metadata['main_playlist_filenames'] as $filename ) {
+			if ( isset( $by_basename[ $filename ] ) ) {
+				$ordered[]          = $by_basename[ $filename ];
+				$used[ $filename ]  = true;
+			}
+		}
+
+		// Append any images not in the playlist.
+		foreach ( $images as $path ) {
+			if ( ! isset( $used[ basename( $path ) ] ) ) {
+				$ordered[] = $path;
+			}
+		}
+
+		return $ordered;
+	}
+
+	/**
 	 * Scan the media/ folder for full-resolution panorama images.
 	 *
-	 * Excludes thumbnail variants (files ending in _t before the extension).
+	 * Excludes thumbnail variants (files ending in _t before the extension)
+	 * and floorplan images (files starting with map_).
 	 *
 	 * @param string $extract_dir Extracted archive directory.
 	 * @return array List of absolute file paths.
@@ -621,6 +1060,11 @@ class H3VT_Tours_3DVista_Converter {
 
 			// Skip thumbnails (filenames ending with _t).
 			if ( '_t' === substr( $basename, -2 ) ) {
+				continue;
+			}
+
+			// Skip floorplan images (filenames starting with map_).
+			if ( 0 === strpos( $basename, 'map_' ) ) {
 				continue;
 			}
 
@@ -677,12 +1121,16 @@ class H3VT_Tours_3DVista_Converter {
 	 * integer attachment IDs instead of JSON objects with id:0, which is
 	 * what makes ACF validation pass on save.
 	 *
-	 * @param int    $tour_id         The tour post ID.
-	 * @param array  $attachment_ids  Array of [ 'id' => int, 'filename' => string ].
-	 * @param int    $template_id     Template post ID (0 for none).
+	 * @param int    $tour_id          The tour post ID.
+	 * @param array  $attachment_ids   Array of [ 'id' => int, 'filename' => string ].
+	 * @param int    $template_id      Template post ID (0 for none).
 	 * @param string $default_category Default navigation category label.
+	 * @param array  $metadata         Parsed 3DVista metadata (optional).
+	 * @param array  $floorplan_atts   Floorplan attachment data (optional).
 	 */
-	private function populate_acf_fields( $tour_id, $attachment_ids, $template_id, $default_category ) {
+	private function populate_acf_fields( $tour_id, $attachment_ids, $template_id, $default_category, $metadata = array(), $floorplan_atts = array() ) {
+		$has_metadata = ! empty( $metadata ) && ! empty( $metadata['photos'] );
+
 		// Template.
 		if ( $template_id > 0 ) {
 			update_field( 'tour_template', $template_id, $tour_id );
@@ -694,7 +1142,16 @@ class H3VT_Tours_3DVista_Converter {
 		update_field( 'hero_image', $first['id'], $tour_id );
 
 		// Navigation categories.
-		if ( ! empty( $default_category ) ) {
+		if ( $has_metadata && ! empty( $metadata['nav_categories'] ) ) {
+			$categories = array();
+			foreach ( $metadata['nav_categories'] as $order => $label ) {
+				$categories[] = array(
+					'nav_label' => $label,
+					'nav_order' => $order + 1,
+				);
+			}
+			update_field( 'nav_categories', $categories, $tour_id );
+		} elseif ( ! empty( $default_category ) ) {
 			$categories = array(
 				array(
 					'nav_label' => $default_category,
@@ -710,24 +1167,78 @@ class H3VT_Tours_3DVista_Converter {
 		update_post_meta( $tour_id, '_slides', 'field_h3vt_navigation_slides' );
 
 		foreach ( $attachment_ids as $i => $att ) {
-			$prefix = "slides_{$i}_";
+			$prefix   = "slides_{$i}_";
+			$filename = $att['filename'];
 
-			$title = $this->filename_to_title( $att['filename'] );
+			// Look up metadata for this image.
+			$photo_meta = null;
+			if ( $has_metadata && isset( $metadata['photos'][ $filename ] ) ) {
+				$photo_meta = $metadata['photos'][ $filename ];
+			}
+
+			// Slide title: prefer metadata, fall back to filename.
+			$title = ( $photo_meta && '' !== $photo_meta['title'] )
+				? $photo_meta['title']
+				: $this->filename_to_title( $filename );
 
 			update_post_meta( $tour_id, "{$prefix}slide_title", $title );
 			update_post_meta( $tour_id, "_{$prefix}slide_title", 'field_h3vt_navigation_slide_title' );
 
-			update_post_meta( $tour_id, "{$prefix}slide_description", '' );
+			// Slide description: from metadata or empty.
+			$description = ( $photo_meta && '' !== $photo_meta['description'] )
+				? $photo_meta['description']
+				: '';
+
+			update_post_meta( $tour_id, "{$prefix}slide_description", $description );
 			update_post_meta( $tour_id, "_{$prefix}slide_description", 'field_h3vt_navigation_slide_description' );
 
-			if ( ! empty( $default_category ) ) {
-				update_post_meta( $tour_id, "{$prefix}slide_nav_category", $default_category );
+			// Slide category: from metadata, or default_category, or empty.
+			$category = '';
+			if ( $photo_meta && '' !== $photo_meta['category'] ) {
+				$category = $photo_meta['category'];
+			} elseif ( ! empty( $default_category ) ) {
+				$category = $default_category;
+			}
+
+			if ( '' !== $category ) {
+				update_post_meta( $tour_id, "{$prefix}slide_nav_category", $category );
 				update_post_meta( $tour_id, "_{$prefix}slide_nav_category", 'field_h3vt_navigation_slide_nav_category' );
 			}
 
 			// Store the real attachment ID — ACF validates this natively.
 			update_post_meta( $tour_id, "{$prefix}slide_image", $att['id'] );
 			update_post_meta( $tour_id, "_{$prefix}slide_image", 'field_h3vt_navigation_slide_image' );
+		}
+
+		// Floor plans.
+		if ( ! empty( $floorplan_atts ) && ! empty( $metadata['floorplans'] ) ) {
+			update_field( 'enable_floorplans', true, $tour_id );
+
+			$floorplan_rows = array();
+			foreach ( $floorplan_atts as $fp_index => $fp_att ) {
+				$fp_meta = isset( $metadata['floorplans'][ $fp_index ] ) ? $metadata['floorplans'][ $fp_index ] : null;
+				$label   = $fp_meta ? $fp_meta['label'] : sprintf( 'Floor Plan %d', $fp_index + 1 );
+
+				$floorplan_rows[] = array(
+					'floorplan_label' => $label,
+					'floorplan_image' => $fp_att['id'],
+				);
+			}
+
+			update_field( 'floorplans', $floorplan_rows, $tour_id );
+		}
+
+		// Embedded tours.
+		if ( ! empty( $metadata['embedded_tours'] ) ) {
+			$tour_rows = array();
+			foreach ( $metadata['embedded_tours'] as $embed ) {
+				$tour_rows[] = array(
+					'tour_label'     => $embed['label'],
+					'tour_embed_url' => $embed['url'],
+				);
+			}
+
+			update_field( 'embedded_tours', $tour_rows, $tour_id );
 		}
 	}
 

@@ -19,6 +19,20 @@ class H3VT_Tours_REST_API {
 	 */
 	public function __construct() {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+		add_action( 'rest_api_init', array( $this, 'add_cors_headers' ), 15 );
+	}
+
+	/**
+	 * Add CORS headers for cross-origin embedding.
+	 */
+	public function add_cors_headers() {
+		remove_filter( 'rest_pre_serve_request', 'rest_send_cors_headers' );
+		add_filter( 'rest_pre_serve_request', function( $value ) {
+			header( 'Access-Control-Allow-Origin: *' );
+			header( 'Access-Control-Allow-Methods: GET, OPTIONS' );
+			header( 'Access-Control-Allow-Headers: Content-Type, Authorization' );
+			return $value;
+		});
 	}
 
 	/**

@@ -5,8 +5,7 @@
  *
  *   <script
  *     src="https://example.com/wp-content/plugins/h3vt-tours/assets/js/h3vt-tours-embed.js"
- *     data-tour-id="123"
- *     data-site="https://example.com">
+ *     data-tour-id="123">
  *   </script>
  *
  * The script fetches the tour markup from the WordPress REST API,
@@ -25,15 +24,15 @@
 	}
 
 	var tourId = script.getAttribute( 'data-tour-id' );
-	var site   = script.getAttribute( 'data-site' );
 
-	if ( ! tourId || ! site ) {
-		console.error( 'H3VT Tours: data-tour-id and data-site attributes are required.' );
+	if ( ! tourId ) {
+		console.error( 'H3VT Tours: data-tour-id attribute is required.' );
 		return;
 	}
 
-	// Normalise site URL — strip trailing slashes.
-	site = site.replace( /\/+$/, '' );
+	// Derive the host site from this script's own src URL.
+	var scriptUrl = new URL( script.src );
+	var site      = scriptUrl.origin;
 
 	var apiUrl = site + '/wp-json/h3vt-tours/v1/tour/' + encodeURIComponent( tourId ) + '?format=html';
 
