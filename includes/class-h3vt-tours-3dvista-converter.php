@@ -428,7 +428,11 @@ class H3VT_Tours_3DVista_Converter {
 		}
 
 		$image_path = $job['images'][ $index ];
-		$att_id     = $this->upload_image_to_media_library( $image_path, $job['tour_id'] );
+
+		// Set post_id in request so the upload_dir filter routes to the tour subdirectory.
+		$_REQUEST['post_id'] = $job['tour_id'];
+
+		$att_id = $this->upload_image_to_media_library( $image_path, $job['tour_id'] );
 
 		if ( is_wp_error( $att_id ) ) {
 			wp_send_json_error( array(
@@ -436,6 +440,10 @@ class H3VT_Tours_3DVista_Converter {
 				'filename' => basename( $image_path ),
 			) );
 		}
+
+		// Belt-and-suspenders: ensure the tour media flag is set even if
+		// the add_attachment hook didn't fire (e.g. post_parent timing).
+		update_post_meta( $att_id, '_h3vt_tour_media', '1' );
 
 		// Store attachment ID in the job transient.
 		$job['attachment_ids'][ $index ] = array(
