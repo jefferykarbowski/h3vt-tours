@@ -101,7 +101,7 @@ class H3VT_Tours_3DVista_Converter {
 
 			<p><?php esc_html_e( 'Upload a 3DVista tour archive (.zip). Panorama images from the media/ folder will be imported into the WordPress media library and used as tour slides.', 'h3vt-tours' ); ?></p>
 
-			<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php?action=h3vt_3dvista_import' ) ); ?>">
 				<?php wp_nonce_field( 'h3vt_3dvista_import', 'h3vt_3dvista_nonce' ); ?>
 				<input type="hidden" name="action" value="h3vt_3dvista_import">
 
@@ -152,7 +152,34 @@ class H3VT_Tours_3DVista_Converter {
 
 				<?php submit_button( __( 'Import Tour', 'h3vt-tours' ) ); ?>
 			</form>
+
+			<p class="description">
+				<?php
+				printf(
+					/* translators: 1: upload_max_filesize value, 2: post_max_size value */
+					esc_html__( 'Server upload limit: %1$s (upload_max_filesize) / %2$s (post_max_size).', 'h3vt-tours' ),
+					esc_html( ini_get( 'upload_max_filesize' ) ),
+					esc_html( ini_get( 'post_max_size' ) )
+				);
+				?>
+			</p>
 		</div>
+
+		<script>
+		(function() {
+			var maxBytes = <?php echo (int) wp_max_upload_size(); ?>;
+			var fileInput = document.getElementById('h3vt_zip_file');
+			if (fileInput) {
+				fileInput.addEventListener('change', function() {
+					if (this.files[0] && this.files[0].size > maxBytes) {
+						var sizeMB = (this.files[0].size / 1024 / 1024).toFixed(1);
+						var limitMB = (maxBytes / 1024 / 1024).toFixed(0);
+						alert(<?php echo wp_json_encode( __( 'This file is ', 'h3vt-tours' ) ); ?> + sizeMB + 'MB but the server only allows ' + limitMB + 'MB. The upload will fail. Please ask your host to increase the PHP upload limits.');
+					}
+				});
+			}
+		})();
+		</script>
 		<?php
 	}
 
@@ -308,6 +335,25 @@ class H3VT_Tours_3DVista_Converter {
 
 		// Register a shutdown handler so fatal errors reach debug.log.
 		register_shutdown_function( array( $this, 'log_fatal_error' ) );
+
+		// Detect when the upload exceeds PHP's post_max_size.
+		// PHP silently discards all POST data (including the nonce and file),
+		// which causes a white screen because admin-post.php has no action
+		// to dispatch. Check before the nonce verification.
+		if ( isset( $_SERVER['CONTENT_LENGTH'] ) && (int) $_SERVER['CONTENT_LENGTH'] > 0 && empty( $_POST ) && empty( $_FILES ) ) {
+			$post_max  = ini_get( 'post_max_size' );
+			$upload_max = ini_get( 'upload_max_filesize' );
+			wp_die(
+				sprintf(
+					/* translators: 1: post_max_size value, 2: upload_max_filesize value */
+					esc_html__( 'The uploaded file exceeds the server size limit. Your server allows uploads up to %1$s (post_max_size) / %2$s (upload_max_filesize). Please ask your host to increase these PHP limits, or use a smaller archive.', 'h3vt-tours' ),
+					esc_html( $post_max ),
+					esc_html( $upload_max )
+				),
+				esc_html__( 'Upload Too Large', 'h3vt-tours' ),
+				array( 'back_link' => true )
+			);
+		}
 
 		if ( ! check_admin_referer( 'h3vt_3dvista_import', 'h3vt_3dvista_nonce' ) ) {
 			wp_die( esc_html__( 'Invalid nonce.', 'h3vt-tours' ) );
