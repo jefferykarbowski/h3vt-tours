@@ -302,6 +302,13 @@ class H3VT_Tours_3DVista_Converter {
 	 * handles the actual image uploads one at a time.
 	 */
 	public function handle_import() {
+		// Extend limits for large archive processing (ZIP extraction + metadata parsing).
+		@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		wp_raise_memory_limit( 'admin' );
+
+		// Register a shutdown handler so fatal errors reach debug.log.
+		register_shutdown_function( array( $this, 'log_fatal_error' ) );
+
 		if ( ! check_admin_referer( 'h3vt_3dvista_import', 'h3vt_3dvista_nonce' ) ) {
 			wp_die( esc_html__( 'Invalid nonce.', 'h3vt-tours' ) );
 		}
@@ -417,61 +424,70 @@ class H3VT_Tours_3DVista_Converter {
 	 * Expects POST params: job_id, index.
 	 */
 	public function ajax_upload_image() {
-		check_ajax_referer( 'h3vt_3dvista_ajax' );
+		@set_time_limit( 120 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		register_shutdown_function( array( $this, 'log_fatal_error' ) );
 
-		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'h3vt-tours' ) ) );
-		}
+		try {
+			check_ajax_referer( 'h3vt_3dvista_ajax' );
 
-		$job_id = sanitize_key( $_POST['job_id'] ?? '' );
-		$index  = absint( $_POST['index'] ?? 0 );
+			if ( ! current_user_can( 'edit_posts' ) ) {
+				wp_send_json_error( array( 'message' => __( 'Permission denied.', 'h3vt-tours' ) ) );
+			}
 
-		$job = get_transient( self::TRANSIENT_PREFIX . $job_id );
-		if ( ! $job ) {
-			wp_send_json_error( array( 'message' => __( 'Import job expired or not found.', 'h3vt-tours' ) ) );
-		}
+			$job_id = sanitize_key( $_POST['job_id'] ?? '' );
+			$index  = absint( $_POST['index'] ?? 0 );
 
-		if ( ! isset( $job['images'][ $index ] ) ) {
-			wp_send_json_error( array( 'message' => __( 'Image index out of range.', 'h3vt-tours' ) ) );
-		}
+			$job = get_transient( self::TRANSIENT_PREFIX . $job_id );
+			if ( ! $job ) {
+				wp_send_json_error( array( 'message' => __( 'Import job expired or not found.', 'h3vt-tours' ) ) );
+			}
 
-		// Require media handling functions.
-		if ( ! function_exists( 'media_handle_sideload' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/image.php';
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-			require_once ABSPATH . 'wp-admin/includes/media.php';
-		}
+			if ( ! isset( $job['images'][ $index ] ) ) {
+				wp_send_json_error( array( 'message' => __( 'Image index out of range.', 'h3vt-tours' ) ) );
+			}
 
-		$image_path = $job['images'][ $index ];
+			// Require media handling functions.
+			if ( ! function_exists( 'media_handle_sideload' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/image.php';
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+				require_once ABSPATH . 'wp-admin/includes/media.php';
+			}
 
-		// Set post_id in request so the upload_dir filter routes to the tour subdirectory.
-		$_REQUEST['post_id'] = $job['tour_id'];
+			$image_path = $job['images'][ $index ];
 
-		$att_id = $this->upload_image_to_media_library( $image_path, $job['tour_id'] );
+			// Set post_id in request so the upload_dir filter routes to the tour subdirectory.
+			$_REQUEST['post_id'] = $job['tour_id'];
 
-		if ( is_wp_error( $att_id ) ) {
-			wp_send_json_error( array(
-				'message'  => basename( $image_path ) . ': ' . $att_id->get_error_message(),
+			$att_id = $this->upload_image_to_media_library( $image_path, $job['tour_id'] );
+
+			if ( is_wp_error( $att_id ) ) {
+				wp_send_json_error( array(
+					'message'  => basename( $image_path ) . ': ' . $att_id->get_error_message(),
+					'filename' => basename( $image_path ),
+				) );
+			}
+
+			// Belt-and-suspenders: ensure the tour media flag is set even if
+			// the add_attachment hook didn't fire (e.g. post_parent timing).
+			update_post_meta( $att_id, '_h3vt_tour_media', '1' );
+
+			// Store attachment ID in the job transient.
+			$job['attachment_ids'][ $index ] = array(
+				'id'       => $att_id,
 				'filename' => basename( $image_path ),
+			);
+			set_transient( self::TRANSIENT_PREFIX . $job_id, $job, HOUR_IN_SECONDS );
+
+			wp_send_json_success( array(
+				'attachment_id' => $att_id,
+				'filename'      => basename( $image_path ),
+				'index'         => $index,
 			) );
+		} catch ( \Exception $e ) {
+			wp_send_json_error( array( 'message' => 'Upload exception: ' . $e->getMessage() ) );
+		} catch ( \Error $e ) {
+			wp_send_json_error( array( 'message' => 'Upload error: ' . $e->getMessage() ) );
 		}
-
-		// Belt-and-suspenders: ensure the tour media flag is set even if
-		// the add_attachment hook didn't fire (e.g. post_parent timing).
-		update_post_meta( $att_id, '_h3vt_tour_media', '1' );
-
-		// Store attachment ID in the job transient.
-		$job['attachment_ids'][ $index ] = array(
-			'id'       => $att_id,
-			'filename' => basename( $image_path ),
-		);
-		set_transient( self::TRANSIENT_PREFIX . $job_id, $job, HOUR_IN_SECONDS );
-
-		wp_send_json_success( array(
-			'attachment_id' => $att_id,
-			'filename'      => basename( $image_path ),
-			'index'         => $index,
-		) );
 	}
 
 	/**
@@ -480,68 +496,77 @@ class H3VT_Tours_3DVista_Converter {
 	 * Expects POST param: job_id.
 	 */
 	public function ajax_finalize() {
-		check_ajax_referer( 'h3vt_3dvista_ajax' );
+		@set_time_limit( 120 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		register_shutdown_function( array( $this, 'log_fatal_error' ) );
 
-		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'h3vt-tours' ) ) );
-		}
+		try {
+			check_ajax_referer( 'h3vt_3dvista_ajax' );
 
-		$job_id = sanitize_key( $_POST['job_id'] ?? '' );
-		$job    = get_transient( self::TRANSIENT_PREFIX . $job_id );
-
-		if ( ! $job ) {
-			wp_send_json_error( array( 'message' => __( 'Import job expired or not found.', 'h3vt-tours' ) ) );
-		}
-
-		// Collect successfully uploaded attachments (preserving order).
-		$attachment_ids = array();
-		foreach ( $job['images'] as $i => $path ) {
-			if ( isset( $job['attachment_ids'][ $i ] ) ) {
-				$attachment_ids[] = $job['attachment_ids'][ $i ];
+			if ( ! current_user_can( 'edit_posts' ) ) {
+				wp_send_json_error( array( 'message' => __( 'Permission denied.', 'h3vt-tours' ) ) );
 			}
-		}
 
-		$tour_id = $job['tour_id'];
+			$job_id = sanitize_key( $_POST['job_id'] ?? '' );
+			$job    = get_transient( self::TRANSIENT_PREFIX . $job_id );
 
-		if ( empty( $attachment_ids ) ) {
-			wp_delete_post( $tour_id, true );
+			if ( ! $job ) {
+				wp_send_json_error( array( 'message' => __( 'Import job expired or not found.', 'h3vt-tours' ) ) );
+			}
+
+			// Collect successfully uploaded attachments (preserving order).
+			$attachment_ids = array();
+			foreach ( $job['images'] as $i => $path ) {
+				if ( isset( $job['attachment_ids'][ $i ] ) ) {
+					$attachment_ids[] = $job['attachment_ids'][ $i ];
+				}
+			}
+
+			$tour_id = $job['tour_id'];
+
+			if ( empty( $attachment_ids ) ) {
+				wp_delete_post( $tour_id, true );
+				$this->cleanup( $job['extract_dir'] );
+				delete_transient( self::TRANSIENT_PREFIX . $job_id );
+				wp_send_json_error( array( 'message' => __( 'All image uploads failed. Tour was not created.', 'h3vt-tours' ) ) );
+			}
+
+			// Partition attachments into panoramas and floorplans.
+			$panorama_count  = isset( $job['panorama_count'] ) ? intval( $job['panorama_count'] ) : count( $attachment_ids );
+			$panorama_atts   = array_slice( $attachment_ids, 0, $panorama_count );
+			$floorplan_atts  = array_slice( $attachment_ids, $panorama_count );
+			$metadata        = isset( $job['metadata'] ) ? $job['metadata'] : array();
+
+			// Populate ACF fields with metadata.
+			$this->populate_acf_fields( $tour_id, $panorama_atts, $job['template_id'], $job['default_category'], $metadata, $floorplan_atts );
+
+			// Clean up temp directory and transient.
 			$this->cleanup( $job['extract_dir'] );
 			delete_transient( self::TRANSIENT_PREFIX . $job_id );
-			wp_send_json_error( array( 'message' => __( 'All image uploads failed. Tour was not created.', 'h3vt-tours' ) ) );
-		}
 
-		// Partition attachments into panoramas and floorplans.
-		$panorama_count  = isset( $job['panorama_count'] ) ? intval( $job['panorama_count'] ) : count( $attachment_ids );
-		$panorama_atts   = array_slice( $attachment_ids, 0, $panorama_count );
-		$floorplan_atts  = array_slice( $attachment_ids, $panorama_count );
-		$metadata        = isset( $job['metadata'] ) ? $job['metadata'] : array();
-
-		// Populate ACF fields with metadata.
-		$this->populate_acf_fields( $tour_id, $panorama_atts, $job['template_id'], $job['default_category'], $metadata, $floorplan_atts );
-
-		// Clean up temp directory and transient.
-		$this->cleanup( $job['extract_dir'] );
-		delete_transient( self::TRANSIENT_PREFIX . $job_id );
-
-		// Build success message.
-		$edit_link = get_edit_post_link( $tour_id, 'raw' );
-		$message   = sprintf(
-			/* translators: 1: slide count, 2: opening anchor tag, 3: closing anchor tag */
-			__( 'Tour imported with %1$d slides. %2$sEdit tour &rarr;%3$s', 'h3vt-tours' ),
-			count( $panorama_atts ),
-			'<a href="' . esc_url( $edit_link ) . '">',
-			'</a>'
-		);
-
-		if ( ! empty( $job['parsed_title'] ) ) {
-			$message .= ' ' . sprintf(
-				/* translators: %s: parsed title from the 3DVista archive */
-				__( '(Source: %s)', 'h3vt-tours' ),
-				esc_html( $job['parsed_title'] )
+			// Build success message.
+			$edit_link = get_edit_post_link( $tour_id, 'raw' );
+			$message   = sprintf(
+				/* translators: 1: slide count, 2: opening anchor tag, 3: closing anchor tag */
+				__( 'Tour imported with %1$d slides. %2$sEdit tour &rarr;%3$s', 'h3vt-tours' ),
+				count( $panorama_atts ),
+				'<a href="' . esc_url( $edit_link ) . '">',
+				'</a>'
 			);
-		}
 
-		wp_send_json_success( array( 'message' => $message ) );
+			if ( ! empty( $job['parsed_title'] ) ) {
+				$message .= ' ' . sprintf(
+					/* translators: %s: parsed title from the 3DVista archive */
+					__( '(Source: %s)', 'h3vt-tours' ),
+					esc_html( $job['parsed_title'] )
+				);
+			}
+
+			wp_send_json_success( array( 'message' => $message ) );
+		} catch ( \Exception $e ) {
+			wp_send_json_error( array( 'message' => 'Finalization exception: ' . $e->getMessage() ) );
+		} catch ( \Error $e ) {
+			wp_send_json_error( array( 'message' => 'Finalization error: ' . $e->getMessage() ) );
+		}
 	}
 
 	/**
@@ -579,6 +604,7 @@ class H3VT_Tours_3DVista_Converter {
 			return new WP_Error( 'mkdir_fail', __( 'Could not create temporary extraction directory.', 'h3vt-tours' ) );
 		}
 
+		@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		$zip->extractTo( $tmp_dir );
 		$zip->close();
 
@@ -711,6 +737,14 @@ class H3VT_Tours_3DVista_Converter {
 
 		$script_file = $extract_dir . '/script_general.js';
 		if ( ! file_exists( $script_file ) ) {
+			return $metadata;
+		}
+
+		// Guard against excessively large script files exhausting memory.
+		$file_size = filesize( $script_file );
+		if ( false === $file_size || $file_size > 50 * 1024 * 1024 ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[H3VT Tours] script_general.js too large to parse: ' . size_format( $file_size ) );
 			return $metadata;
 		}
 
@@ -1344,5 +1378,29 @@ class H3VT_Tours_3DVista_Converter {
 		$url = admin_url( 'edit.php?post_type=h3vt_tour&page=h3vt-tours-3dvista-import' );
 		wp_safe_redirect( $url );
 		exit;
+	}
+
+	/**
+	 * Shutdown handler that logs fatal errors to debug.log.
+	 *
+	 * PHP fatal errors (memory exhaustion, timeouts) kill the process
+	 * before WordPress's error handler can catch them, so they never
+	 * appear in debug.log. This handler ensures they do.
+	 */
+	public function log_fatal_error() {
+		$error = error_get_last();
+		if ( $error && in_array( $error['type'], array( E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE ), true ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log(
+					sprintf(
+						'[H3VT Tours] Fatal error during 3DVista import: %s in %s on line %d',
+						$error['message'],
+						$error['file'],
+						$error['line']
+					)
+				);
+			}
+		}
 	}
 }
