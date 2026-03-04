@@ -40,7 +40,7 @@
 	var container       = document.createElement( 'div' );
 	container.className = 'h3vt-tour-embed';
 	container.style.width    = '100%';
-	container.style.height   = '100vh';
+	container.style.height   = '90vh';
 	container.style.position = 'relative';
 	container.style.overflow = 'hidden';
 

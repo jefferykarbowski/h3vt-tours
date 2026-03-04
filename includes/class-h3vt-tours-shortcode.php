@@ -40,7 +40,7 @@ class H3VT_Tours_Shortcode {
 		$atts = shortcode_atts(
 			array(
 				'id'     => 0,
-				'height' => '100vh',
+				'height' => '90vh',
 			),
 			$atts,
 			'h3vt_tour'
