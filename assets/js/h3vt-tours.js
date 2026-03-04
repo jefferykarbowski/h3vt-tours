@@ -413,10 +413,10 @@
 				videoContainer.innerHTML = '';
 			}
 
-			// Clear video popup player.
-			var popupPlayer = modalEl.querySelector( '.h3vt-tour__video-popup-player' );
-			if ( popupPlayer ) {
-				popupPlayer.innerHTML = '';
+			// Clear videos player.
+			var videosPlayer = modalEl.querySelector( '.h3vt-tour__videos-player' );
+			if ( videosPlayer ) {
+				videosPlayer.innerHTML = '';
 			}
 		}
 
@@ -563,27 +563,42 @@
 		});
 
 		/* ---------------------------------------------------------------
-		 * 7b. Video Popup
+		 * 7b. Videos
 		 * ------------------------------------------------------------- */
-		var videoPopupModal = tourEl.querySelector( '.h3vt-tour__modal--video-popup' );
-		if ( videoPopupModal ) {
-			var vpObserver = new MutationObserver( function () {
-				var player = videoPopupModal.querySelector( '.h3vt-tour__video-popup-player' );
-				if ( ! videoPopupModal.hasAttribute( 'hidden' ) ) {
-					// Modal opened — load the video.
-					if ( player ) {
-						var videoUrl = player.getAttribute( 'data-video-url' );
-						loadVideo( player, videoUrl );
-					}
-				} else {
-					// Modal closed — stop playback.
-					if ( player ) {
-						player.innerHTML = '';
+		var videosModal = tourEl.querySelector( '.h3vt-tour__modal--videos' );
+		if ( videosModal ) {
+			var vObserver = new MutationObserver( function () {
+				if ( ! videosModal.hasAttribute( 'hidden' ) ) {
+					// Auto-select first video button on open.
+					var active = videosModal.querySelector( '.h3vt-tour__videos-btn--active' );
+					if ( ! active ) {
+						var firstBtn = videosModal.querySelector( '.h3vt-tour__videos-btn' );
+						if ( firstBtn ) {
+							firstBtn.click();
+						}
 					}
 				}
 			});
-			vpObserver.observe( videoPopupModal, { attributes: true, attributeFilter: [ 'hidden' ] } );
+			vObserver.observe( videosModal, { attributes: true, attributeFilter: [ 'hidden' ] } );
 		}
+
+		tourEl.querySelectorAll( '.h3vt-tour__videos-btn' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function () {
+				var modal    = btn.closest( '.h3vt-tour__modal' );
+				var videoUrl = btn.getAttribute( 'data-video-url' );
+
+				if ( modal && videoUrl ) {
+					// Update active state.
+					modal.querySelectorAll( '.h3vt-tour__videos-btn' ).forEach( function ( b ) {
+						b.classList.remove( 'h3vt-tour__videos-btn--active' );
+					});
+					btn.classList.add( 'h3vt-tour__videos-btn--active' );
+
+					var player = modal.querySelector( '.h3vt-tour__videos-player' );
+					loadVideo( player, videoUrl );
+				}
+			});
+		});
 
 		/* ---------------------------------------------------------------
 		 * 8. Floor Plans

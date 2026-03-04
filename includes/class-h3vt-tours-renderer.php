@@ -174,14 +174,16 @@ class H3VT_Tours_Renderer {
 		}
 
 		/*
-		 * Video popup.
+		 * Videos.
 		 */
-		$video_popup_enabled = (bool) get_field( 'enable_video_popup', $post_id );
-		$video_popup         = array(
-			'enabled' => $video_popup_enabled,
-			'label'   => $video_popup_enabled ? ( get_field( 'video_popup_label', $post_id ) ?: __( 'Watch Video', 'h3vt-tours' ) ) : '',
-			'url'     => $video_popup_enabled ? ( get_field( 'video_popup_url', $post_id ) ?: '' ) : '',
-		);
+		$videos_enabled = (bool) get_field( 'enable_videos', $post_id );
+		$videos_items   = array();
+		if ( $videos_enabled ) {
+			$raw = get_field( 'videos', $post_id );
+			if ( is_array( $raw ) ) {
+				$videos_items = $raw;
+			}
+		}
 
 		/*
 		 * Contact.
@@ -209,7 +211,10 @@ class H3VT_Tours_Renderer {
 				'items'   => $floorplans_items,
 			),
 			'embedded_tours'  => $embedded_tours,
-			'video_popup'     => $video_popup,
+			'videos'          => array(
+				'enabled' => $videos_enabled,
+				'items'   => $videos_items,
+			),
 			'contact'         => $contact,
 		);
 	}
@@ -389,8 +394,8 @@ class H3VT_Tours_Renderer {
 					<?php self::render_bottom_button( __( 'Testimonials', 'h3vt-tours' ), 'testimonials', $data ); ?>
 				<?php endif; ?>
 
-				<?php if ( $data['video_popup']['enabled'] && ! empty( $data['video_popup']['url'] ) ) : ?>
-					<?php self::render_bottom_button( $data['video_popup']['label'], 'video-popup', $data ); ?>
+				<?php if ( $data['videos']['enabled'] && ! empty( $data['videos']['items'] ) ) : ?>
+					<?php self::render_bottom_button( __( 'Videos', 'h3vt-tours' ), 'videos', $data ); ?>
 				<?php endif; ?>
 
 				<?php foreach ( $data['embedded_tours'] as $idx => $etour ) : ?>
@@ -483,8 +488,8 @@ class H3VT_Tours_Renderer {
 			self::render_3dtour_modal( $idx, $etour );
 		}
 
-		if ( $data['video_popup']['enabled'] && ! empty( $data['video_popup']['url'] ) ) {
-			self::render_video_popup_modal( $data );
+		if ( $data['videos']['enabled'] && ! empty( $data['videos']['items'] ) ) {
+			self::render_videos_modal( $data );
 		}
 	}
 
@@ -669,19 +674,27 @@ class H3VT_Tours_Renderer {
 	}
 
 	/**
-	 * Video popup modal — single video container.
+	 * Videos modal with a video area and button carousel.
 	 *
 	 * @param array $data Tour data.
 	 */
-	private static function render_video_popup_modal( $data ) {
-		$label     = $data['video_popup']['label'];
-		$video_url = $data['video_popup']['url'];
+	private static function render_videos_modal( $data ) {
 		?>
-		<div class="h3vt-tour__modal h3vt-tour__modal--video-popup" data-modal-name="video-popup" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr( $label ); ?>" hidden>
+		<div class="h3vt-tour__modal h3vt-tour__modal--videos" data-modal-name="videos" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e( 'Videos', 'h3vt-tours' ); ?>" hidden>
 			<div class="h3vt-tour__modal-backdrop"></div>
 			<div class="h3vt-tour__modal-content">
 				<button class="h3vt-tour__modal-close" aria-label="<?php esc_attr_e( 'Close', 'h3vt-tours' ); ?>">&times;</button>
-				<div class="h3vt-tour__video-popup-player" data-video-url="<?php echo esc_url( $video_url ); ?>"></div>
+				<div class="h3vt-tour__videos-player"></div>
+				<div class="h3vt-tour__videos-carousel">
+					<?php foreach ( $data['videos']['items'] as $vi => $video ) : ?>
+						<?php $video_url = ! empty( $video['video_url'] ) ? $video['video_url'] : ''; ?>
+						<button class="h3vt-tour__videos-btn"
+							data-index="<?php echo esc_attr( $vi ); ?>"
+							data-video-url="<?php echo esc_url( $video_url ); ?>">
+							<span><?php echo esc_html( $video['video_label'] ); ?></span>
+						</button>
+					<?php endforeach; ?>
+				</div>
 			</div>
 		</div>
 		<?php

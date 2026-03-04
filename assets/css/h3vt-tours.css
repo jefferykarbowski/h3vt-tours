@@ -982,29 +982,88 @@
 }
 
 /* ==========================================================================
-   14. Video Popup Modal
+   14. Videos Modal
    ========================================================================== */
 
-.h3vt-tour__modal--video-popup .h3vt-tour__modal-content {
-	width: 900px;
+.h3vt-tour__modal--videos .h3vt-tour__modal-content {
+	width: 800px;
 	max-width: 95vw;
 	padding: 0;
 	overflow: hidden;
 }
 
-.h3vt-tour__video-popup-player {
+.h3vt-tour__videos-player {
 	width: 100%;
 	aspect-ratio: 16 / 9;
 	background: #000;
 	position: relative;
 }
 
-.h3vt-tour__video-popup-player iframe,
-.h3vt-tour__video-popup-player video {
+.h3vt-tour__videos-player iframe,
+.h3vt-tour__videos-player video {
 	width: 100%;
 	height: 100%;
 	border: none;
 	display: block;
+}
+
+.h3vt-tour__videos-carousel {
+	display: flex;
+	gap: 8px;
+	padding: 16px;
+	overflow-x: auto;
+	background: #111;
+	-webkit-overflow-scrolling: touch;
+}
+
+.h3vt-tour__videos-carousel::-webkit-scrollbar {
+	height: 6px;
+}
+
+.h3vt-tour__videos-carousel::-webkit-scrollbar-track {
+	background: #222;
+}
+
+.h3vt-tour__videos-carousel::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 3px;
+}
+
+.h3vt-tour__videos-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 8px 20px;
+	background: none;
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	border-radius: 4px;
+	color: var(--h3vt-text, #fff);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: border-color 0.2s, background 0.2s;
+	font-family: inherit;
+}
+
+.h3vt-tour__videos-btn:hover,
+.h3vt-tour__videos-btn:focus-visible {
+	border-color: rgba(255, 255, 255, 0.6);
+}
+
+.h3vt-tour__videos-btn:focus-visible {
+	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline-offset: 2px;
+}
+
+.h3vt-tour__videos-btn--active {
+	border-color: var(--h3vt-primary, #ff6b00);
+	background: var(--h3vt-primary, #ff6b00);
+	color: #fff;
+}
+
+.h3vt-tour__videos-btn--active:hover {
+	border-color: var(--h3vt-primary, #ff6b00);
 }
 
 /* ==========================================================================

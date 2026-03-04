@@ -584,13 +584,13 @@ class H3VT_Tours_ACF {
 	}
 
 	/**
-	 * Group: Video Popup.
+	 * Group: Videos.
 	 */
 	private function register_video_popup() {
-		$popup_conditional = array(
+		$videos_conditional = array(
 			array(
 				array(
-					'field'    => 'field_h3vt_video_popup_enable',
+					'field'    => 'field_h3vt_videos_enable',
 					'operator' => '==',
 					'value'    => '1',
 				),
@@ -598,32 +598,41 @@ class H3VT_Tours_ACF {
 		);
 
 		acf_add_local_field_group( array(
-			'key'      => 'group_h3vt_video_popup',
-			'title'    => 'Video Popup',
+			'key'      => 'group_h3vt_videos',
+			'title'    => 'Videos',
 			'fields'   => array(
 				array(
-					'key'           => 'field_h3vt_video_popup_enable',
-					'label'         => 'Enable Video Popup',
-					'name'          => 'enable_video_popup',
+					'key'           => 'field_h3vt_videos_enable',
+					'label'         => 'Enable Videos',
+					'name'          => 'enable_videos',
 					'type'          => 'true_false',
 					'default_value' => 0,
 					'ui'            => 1,
 				),
 				array(
-					'key'               => 'field_h3vt_video_popup_label',
-					'label'             => 'Button Label',
-					'name'              => 'video_popup_label',
-					'type'              => 'text',
-					'default_value'     => 'Watch Video',
-					'conditional_logic' => $popup_conditional,
-				),
-				array(
-					'key'               => 'field_h3vt_video_popup_url',
-					'label'             => 'Video URL',
-					'name'              => 'video_popup_url',
-					'type'              => 'url',
-					'instructions'      => 'YouTube, Vimeo, or direct video URL.',
-					'conditional_logic' => $popup_conditional,
+					'key'               => 'field_h3vt_videos_items',
+					'label'             => 'Videos',
+					'name'              => 'videos',
+					'type'              => 'repeater',
+					'layout'            => 'table',
+					'button_label'      => 'Add Video',
+					'conditional_logic' => $videos_conditional,
+					'sub_fields'        => array(
+						array(
+							'key'         => 'field_h3vt_videos_label',
+							'label'       => 'Label',
+							'name'        => 'video_label',
+							'type'        => 'text',
+							'placeholder' => 'e.g. Walk Our Courtyard',
+						),
+						array(
+							'key'          => 'field_h3vt_videos_url',
+							'label'        => 'Video URL',
+							'name'         => 'video_url',
+							'type'         => 'url',
+							'instructions' => 'YouTube, Vimeo, or direct video URL.',
+						),
+					),
 				),
 			),
 			'location' => array(
