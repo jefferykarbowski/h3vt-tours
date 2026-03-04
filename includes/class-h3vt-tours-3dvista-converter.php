@@ -870,7 +870,78 @@ class H3VT_Tours_3DVista_Converter {
 			}
 		}
 
-		// 3. Extract mainPlayList — ordered album references.
+		// 3. Parse navigation categories from DropDown skin elements.
+		//
+		// The actual tour navigation categories live in DropDown_XXX.label
+		// entries in the locale file (e.g. "RESIDENT ROOMS", "OUTDOOR AREAS").
+		// Each DropDown has a corresponding DropDown_XXX_playlist in
+		// script_general.js that lists which albums belong to that category.
+		//
+		// This replaces the old approach of using album labels as categories,
+		// which produced incorrect per-album "categories" instead of the real
+		// navigation groups.
+
+		// 3a. Collect DropDown labels from locale (skip _mobile duplicates).
+		$dropdown_labels = array(); // dropdown_id => label
+		foreach ( $locale as $key => $value ) {
+			if ( 0 !== strpos( $key, 'DropDown_' ) ) {
+				continue;
+			}
+			// Match "DropDown_XXX.label" but not "DropDown_XXX_mobile.label".
+			if ( false === strpos( $key, '.label' ) ) {
+				continue;
+			}
+			if ( false !== strpos( $key, '_mobile.' ) ) {
+				continue;
+			}
+
+			// Extract the DropDown ID: everything before ".label".
+			$dropdown_id = substr( $key, 0, strpos( $key, '.label' ) );
+			$dropdown_labels[ $dropdown_id ] = $value;
+		}
+
+		// 3b. Parse DropDown playlists from script_general.js.
+		// Each DropDown_XXX_playlist contains items with "media":"this.album_YYY".
+		$album_to_category = array(); // album_id => category label
+		$dropdown_order    = array(); // ordered list of category labels
+
+		foreach ( $dropdown_labels as $dropdown_id => $label ) {
+			$playlist_id  = $dropdown_id . '_playlist';
+			$playlist_pos = strpos( $content, '"id":"' . $playlist_id . '"' );
+			if ( false === $playlist_pos ) {
+				continue;
+			}
+
+			// Search backwards for the items array belonging to this playlist.
+			$items_start = strrpos( substr( $content, 0, $playlist_pos ), '"items"' );
+			if ( false === $items_start ) {
+				continue;
+			}
+
+			$section   = substr( $content, $items_start, $playlist_pos - $items_start );
+			$album_ids = array();
+			if ( preg_match_all( '/"media"\s*:\s*"this\.(album_[^"]+)"/', $section, $dd_matches ) ) {
+				$album_ids = $dd_matches[1];
+			}
+
+			if ( empty( $album_ids ) ) {
+				continue;
+			}
+
+			$dropdown_order[] = $label;
+
+			// Assign each album to this category (first match wins, so more
+			// specific dropdowns should be processed before catch-all ones).
+			foreach ( $album_ids as $album_id ) {
+				if ( ! isset( $album_to_category[ $album_id ] ) ) {
+					$album_to_category[ $album_id ] = $label;
+				}
+			}
+		}
+
+		$metadata['nav_categories'] = $dropdown_order;
+
+		// 4. Extract mainPlayList — ordered album references.
 		// Pattern: "media":"this.album_XXX" inside mainPlayList items.
 		$playlist_album_ids = array();
 		$playlist_pos       = strpos( $content, '"id":"mainPlayList"' );
@@ -885,19 +956,13 @@ class H3VT_Tours_3DVista_Converter {
 			}
 		}
 
-		// 4. Map photos to albums and build the final photos array.
+		// 5. Map photos to albums and build the final photos array.
 		// A photo_id like album_XXX_0 belongs to album_id album_XXX.
-		$nav_categories_seen = array();
-
 		foreach ( $playlist_album_ids as $album_id ) {
 			$album_info = isset( $album_map[ $album_id ] ) ? $album_map[ $album_id ] : null;
-			$category   = $album_info ? $album_info['label'] : '';
 
-			// Track unique categories in playlist order.
-			if ( '' !== $category && ! isset( $nav_categories_seen[ $category ] ) ) {
-				$nav_categories_seen[ $category ] = true;
-				$metadata['nav_categories'][]     = $category;
-			}
+			// Category comes from the DropDown mapping, not the album label.
+			$category = isset( $album_to_category[ $album_id ] ) ? $album_to_category[ $album_id ] : '';
 
 			// Find the photo for this album (album_id + '_0').
 			$photo_id = $album_id . '_0';
@@ -908,9 +973,11 @@ class H3VT_Tours_3DVista_Converter {
 				if ( '' !== $filename ) {
 					$metadata['main_playlist_filenames'][] = $filename;
 
-					$title = $photo['title'];
-					if ( '' === $title && $album_info ) {
-						$title = $album_info['label'];
+					// Title: prefer the album display label (what 3DVista shows
+					// on screen), fall back to photo-specific label.
+					$title = $album_info ? $album_info['label'] : '';
+					if ( '' === $title ) {
+						$title = $photo['title'];
 					}
 
 					$description = $album_info ? $album_info['subtitle'] : '';
@@ -924,23 +991,24 @@ class H3VT_Tours_3DVista_Converter {
 			}
 		}
 
-		// 5. Add any photos not in the mainPlayList.
+		// 6. Add any photos not in the mainPlayList.
 		foreach ( $photo_map as $photo_id => $photo ) {
 			$filename = $photo['filename'];
 			if ( '' !== $filename && ! isset( $metadata['photos'][ $filename ] ) ) {
 				// Derive album_id by stripping the trailing _0.
 				$album_id   = preg_replace( '/_0$/', '', $photo_id );
 				$album_info = isset( $album_map[ $album_id ] ) ? $album_map[ $album_id ] : null;
+				$category   = isset( $album_to_category[ $album_id ] ) ? $album_to_category[ $album_id ] : '';
 
-				$title = $photo['title'];
-				if ( '' === $title && $album_info ) {
-					$title = $album_info['label'];
+				$title = $album_info ? $album_info['label'] : '';
+				if ( '' === $title ) {
+					$title = $photo['title'];
 				}
 
 				$metadata['photos'][ $filename ] = array(
 					'title'       => $title,
 					'description' => $album_info ? $album_info['subtitle'] : '',
-					'category'    => $album_info ? $album_info['label'] : '',
+					'category'    => $category,
 				);
 			}
 		}
@@ -1246,6 +1314,23 @@ class H3VT_Tours_3DVista_Converter {
 		update_post_meta( $tour_id, 'slides', $slide_count );
 		update_post_meta( $tour_id, '_slides', 'field_h3vt_navigation_slides' );
 
+		// Pre-scan for duplicate titles so we can append numbers.
+		$title_counts = array();
+		foreach ( $attachment_ids as $att ) {
+			$fn = $att['filename'];
+			$t  = '';
+			if ( $has_metadata && isset( $metadata['photos'][ $fn ] ) && '' !== $metadata['photos'][ $fn ]['title'] ) {
+				$t = $metadata['photos'][ $fn ]['title'];
+			} else {
+				$t = $this->filename_to_title( $fn );
+			}
+			if ( ! isset( $title_counts[ $t ] ) ) {
+				$title_counts[ $t ] = 0;
+			}
+			$title_counts[ $t ]++;
+		}
+		$title_seen = array(); // track how many times we've output each title
+
 		foreach ( $attachment_ids as $i => $att ) {
 			$prefix   = "slides_{$i}_";
 			$filename = $att['filename'];
@@ -1260,6 +1345,15 @@ class H3VT_Tours_3DVista_Converter {
 			$title = ( $photo_meta && '' !== $photo_meta['title'] )
 				? $photo_meta['title']
 				: $this->filename_to_title( $filename );
+
+			// Append a number when multiple slides share the same title.
+			if ( $title_counts[ $title ] > 1 ) {
+				if ( ! isset( $title_seen[ $title ] ) ) {
+					$title_seen[ $title ] = 0;
+				}
+				$title_seen[ $title ]++;
+				$title .= ' ' . $title_seen[ $title ];
+			}
 
 			update_post_meta( $tour_id, "{$prefix}slide_title", $title );
 			update_post_meta( $tour_id, "_{$prefix}slide_title", 'field_h3vt_navigation_slide_title' );
