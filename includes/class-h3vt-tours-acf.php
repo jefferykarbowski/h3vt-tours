@@ -162,14 +162,14 @@ class H3VT_Tours_ACF {
 			'fields'   => array(
 				array(
 					'key'           => 'field_h3vt_tpl_primary_color',
-					'label'         => 'Primary Color',
+					'label'         => 'Button Backgrounds',
 					'name'          => 'primary_color',
 					'type'          => 'color_picker',
 					'default_value' => '#FF6B00',
 				),
 				array(
 					'key'           => 'field_h3vt_tpl_secondary_color',
-					'label'         => 'Secondary Color',
+					'label'         => 'Header Background',
 					'name'          => 'secondary_color',
 					'type'          => 'color_picker',
 					'default_value' => '#1A1A1A',

@@ -12,7 +12,7 @@
 }
 
 .h3vt-tour--theme-elegant .h3vt-tour__header {
-	background: color-mix(in srgb, var(--h3vt-secondary, #1A1A1A) 92%, transparent);
+	background: color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 92%, transparent);
 }
 
 .h3vt-tour--theme-elegant .h3vt-tour__slide-content {
@@ -32,13 +32,13 @@
 	display: block;
 	width: 60px;
 	height: 3px;
-	background: var(--h3vt-primary, #ff6b00);
+	background: var(--h3vt-button-bg, #ff6b00);
 	margin-bottom: 16px;
 }
 
 .h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text {
-	background: var(--h3vt-secondary, #1A1A1A);
-	border-color: var(--h3vt-secondary, #1A1A1A);
+	background: var(--h3vt-header-bg, #1A1A1A);
+	border-color: var(--h3vt-header-bg, #1A1A1A);
 }
 
 .h3vt-tour--theme-elegant .h3vt-tour__nav-button,

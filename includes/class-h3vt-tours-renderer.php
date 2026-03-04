@@ -229,8 +229,8 @@ class H3VT_Tours_Renderer {
 	public static function render( $post_id, $context = 'template' ) {
 		$data = self::get_tour_data( $post_id );
 
-		$primary   = esc_attr( $data['settings']['primary_color'] );
-		$secondary = esc_attr( $data['settings']['secondary_color'] );
+		$button_bg = esc_attr( $data['settings']['primary_color'] );
+		$header_bg = esc_attr( $data['settings']['secondary_color'] );
 		$text      = esc_attr( $data['settings']['text_color'] );
 		$speed_ms  = absint( $data['settings']['autoplay_speed'] ) * 1000;
 
@@ -242,7 +242,7 @@ class H3VT_Tours_Renderer {
 		echo H3VT_Tours_Theme_Loader::get_head_markup( $theme );
 		?>
 		<div class="h3vt-tour<?php echo $theme_class; ?>"
-			style="--h3vt-primary:<?php echo $primary; ?>;--h3vt-secondary:<?php echo $secondary; ?>;--h3vt-text:<?php echo $text; ?>"
+			style="--h3vt-button-bg:<?php echo $button_bg; ?>;--h3vt-header-bg:<?php echo $header_bg; ?>;--h3vt-text:<?php echo $text; ?>"
 			data-autoplay-speed="<?php echo esc_attr( $speed_ms ); ?>">
 			<?php
 			self::render_header( $data );

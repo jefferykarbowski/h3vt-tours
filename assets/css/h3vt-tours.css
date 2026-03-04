@@ -3,7 +3,7 @@
  *
  * Full-screen Ken Burns slideshow with navigation, modals, and branded styling.
  * All branding driven by CSS custom properties set on .h3vt-tour:
- *   --h3vt-primary, --h3vt-secondary, --h3vt-text
+ *   --h3vt-button-bg, --h3vt-header-bg, --h3vt-text
  *
  * BEM naming: .h3vt-tour__*
  *
@@ -69,7 +69,7 @@
 	display: flex;
 	align-items: center;
 	padding: 12px 20px;
-	background: color-mix(in srgb, var(--h3vt-secondary, #1A1A1A) 85%, transparent);
+	background: color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 85%, transparent);
 }
 
 .h3vt-tour__logo img {
@@ -107,11 +107,11 @@
 
 .h3vt-tour__nav-button:hover,
 .h3vt-tour__nav-button:focus-visible {
-	color: var(--h3vt-primary, #ff6b00);
+	color: var(--h3vt-button-bg, #ff6b00);
 }
 
 .h3vt-tour__nav-button:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 	border-radius: 4px;
 }
@@ -160,12 +160,12 @@
 
 .h3vt-tour__dropdown-item:hover,
 .h3vt-tour__dropdown-item:focus-visible {
-	background: var(--h3vt-primary, #ff6b00);
+	background: var(--h3vt-button-bg, #ff6b00);
 	color: #fff;
 }
 
 .h3vt-tour__dropdown-item:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: -2px;
 }
 
@@ -184,7 +184,7 @@
 }
 
 .h3vt-tour__hamburger:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 	border-radius: 4px;
 }
@@ -425,13 +425,13 @@
 
 .h3vt-tour__control:hover,
 .h3vt-tour__control:focus-visible {
-	background: var(--h3vt-primary, #ff6b00);
+	background: var(--h3vt-button-bg, #ff6b00);
 	color: #fff;
-	border-color: var(--h3vt-primary, #ff6b00);
+	border-color: var(--h3vt-button-bg, #ff6b00);
 }
 
 .h3vt-tour__control:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 }
 
@@ -455,7 +455,7 @@
 }
 
 .h3vt-tour__bottom-btn:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 	border-radius: 4px;
 }
@@ -504,8 +504,8 @@
 
 .h3vt-tour__bottom-btn--text:hover,
 .h3vt-tour__bottom-btn--text:focus-visible {
-	background: var(--h3vt-secondary, #005a8c);
-	border-color: var(--h3vt-secondary, #005a8c);
+	background: var(--h3vt-header-bg, #005a8c);
+	border-color: var(--h3vt-header-bg, #005a8c);
 	color: #fff;
 }
 
@@ -535,7 +535,7 @@
 }
 
 .h3vt-tour__fullscreen-btn:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 }
 
@@ -608,7 +608,7 @@
 }
 
 .h3vt-tour__modal-close:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 }
 
@@ -681,16 +681,16 @@
 }
 
 .h3vt-tour__testimonial-thumb:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 }
 
 .h3vt-tour__testimonial-thumb--active {
-	border-color: var(--h3vt-primary, #ff6b00);
+	border-color: var(--h3vt-button-bg, #ff6b00);
 }
 
 .h3vt-tour__testimonial-thumb--active:hover {
-	border-color: var(--h3vt-primary, #ff6b00);
+	border-color: var(--h3vt-button-bg, #ff6b00);
 }
 
 .h3vt-tour__testimonial-thumb img {
@@ -768,7 +768,7 @@
 }
 
 .h3vt-tour__panel-close:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 }
 
@@ -787,7 +787,7 @@
 }
 
 .h3vt-tour__floorplan-select:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 }
 
@@ -830,7 +830,7 @@
 }
 
 .h3vt-tour__hotspot:focus-visible .h3vt-tour__hotspot-dot {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 4px;
 	transform: scale(1.3);
 }
@@ -839,7 +839,7 @@
 	display: block;
 	width: 16px;
 	height: 16px;
-	background: var(--h3vt-primary, #ff6b00);
+	background: var(--h3vt-button-bg, #ff6b00);
 	border: 2px solid #fff;
 	border-radius: 50%;
 	box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
@@ -917,7 +917,7 @@
 .h3vt-tour__contact-email,
 .h3vt-tour__contact-phone {
 	display: block;
-	color: var(--h3vt-primary, #ff6b00);
+	color: var(--h3vt-button-bg, #ff6b00);
 	text-decoration: none;
 	font-size: 1rem;
 	margin-bottom: 8px;
@@ -939,7 +939,7 @@
 
 .h3vt-tour__contact-email:focus-visible,
 .h3vt-tour__contact-phone:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 	border-radius: 2px;
 }
@@ -1052,18 +1052,18 @@
 }
 
 .h3vt-tour__videos-btn:focus-visible {
-	outline: 2px solid var(--h3vt-primary, #ff6b00);
+	outline: 2px solid var(--h3vt-button-bg, #ff6b00);
 	outline-offset: 2px;
 }
 
 .h3vt-tour__videos-btn--active {
-	border-color: var(--h3vt-primary, #ff6b00);
-	background: var(--h3vt-primary, #ff6b00);
+	border-color: var(--h3vt-button-bg, #ff6b00);
+	background: var(--h3vt-button-bg, #ff6b00);
 	color: #fff;
 }
 
 .h3vt-tour__videos-btn--active:hover {
-	border-color: var(--h3vt-primary, #ff6b00);
+	border-color: var(--h3vt-button-bg, #ff6b00);
 }
 
 /* ==========================================================================
@@ -1085,7 +1085,7 @@
 	left: 0;
 	z-index: 9999;
 	padding: 8px 16px;
-	background: var(--h3vt-primary, #ff6b00);
+	background: var(--h3vt-button-bg, #ff6b00);
 	color: #fff;
 	text-decoration: none;
 	font-weight: 600;
