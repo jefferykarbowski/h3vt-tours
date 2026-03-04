@@ -172,6 +172,9 @@ class H3VT_Tours_Renderer {
 		if ( ! is_array( $embedded_tours ) ) {
 			$embedded_tours = array();
 		}
+		$embedded_tours = array_values( array_filter( $embedded_tours, function ( $etour ) {
+			return ! empty( $etour['tour_embed_url'] );
+		} ) );
 
 		/*
 		 * Videos.
@@ -181,7 +184,9 @@ class H3VT_Tours_Renderer {
 		if ( $videos_enabled ) {
 			$raw = get_field( 'videos', $post_id );
 			if ( is_array( $raw ) ) {
-				$videos_items = $raw;
+				$videos_items = array_values( array_filter( $raw, function ( $video ) {
+					return ! empty( $video['video_url'] );
+				} ) );
 			}
 		}
 

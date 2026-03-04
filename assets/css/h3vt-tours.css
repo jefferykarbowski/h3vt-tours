@@ -352,7 +352,7 @@
 	max-width: 600px;
 }
 
-.h3vt-tour__slide-title {
+.h3vt-tour .h3vt-tour__slide-title {
 	font-size: 2.5rem;
 	font-weight: 700;
 	text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
@@ -360,7 +360,7 @@
 	color: var(--h3vt-text, #fff);
 }
 
-.h3vt-tour__slide-description {
+.h3vt-tour .h3vt-tour__slide-description {
 	font-size: 1.1rem;
 	line-height: 1.5;
 	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
