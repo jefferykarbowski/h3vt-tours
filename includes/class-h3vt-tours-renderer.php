@@ -508,7 +508,8 @@ class H3VT_Tours_Renderer {
 						if ( ! empty( $testimonial['thumbnail'] ) && is_array( $testimonial['thumbnail'] ) ) {
 							$thumb_url = $testimonial['thumbnail']['url'];
 						}
-						$video_url = ! empty( $testimonial['video_url'] ) ? $testimonial['video_url'] : '';
+						$video_file = $testimonial['video_url'];
+						$video_url  = ( ! empty( $video_file ) && is_array( $video_file ) ) ? $video_file['url'] : '';
 						?>
 						<button class="h3vt-tour__testimonial-thumb"
 							data-index="<?php echo esc_attr( $ti ); ?>"
@@ -683,7 +684,10 @@ class H3VT_Tours_Renderer {
 				<div class="h3vt-tour__videos-player"></div>
 				<div class="h3vt-tour__videos-carousel">
 					<?php foreach ( $data['videos']['items'] as $vi => $video ) : ?>
-						<?php $video_url = ! empty( $video['video_url'] ) ? $video['video_url'] : ''; ?>
+						<?php
+					$video_file = $video['video_url'];
+					$video_url  = ( ! empty( $video_file ) && is_array( $video_file ) ) ? $video_file['url'] : '';
+					?>
 						<button class="h3vt-tour__videos-btn"
 							data-index="<?php echo esc_attr( $vi ); ?>"
 							data-video-url="<?php echo esc_url( $video_url ); ?>">

@@ -404,10 +404,12 @@ class H3VT_Tours_ACF {
 							'type'  => 'text',
 						),
 						array(
-							'key'   => 'field_h3vt_testimonials_video_url',
-							'label' => 'Video URL',
-							'name'  => 'video_url',
-							'type'  => 'url',
+							'key'           => 'field_h3vt_testimonials_video_url',
+							'label'         => 'Video',
+							'name'          => 'video_url',
+							'type'          => 'file',
+							'return_format' => 'array',
+							'mime_types'    => 'mp4,webm,mov',
 						),
 						array(
 							'key'           => 'field_h3vt_testimonials_thumbnail',
@@ -623,11 +625,12 @@ class H3VT_Tours_ACF {
 							'placeholder' => 'e.g. Walk Our Courtyard',
 						),
 						array(
-							'key'          => 'field_h3vt_videos_url',
-							'label'        => 'Video URL',
-							'name'         => 'video_url',
-							'type'         => 'url',
-							'instructions' => 'YouTube, Vimeo, or direct video URL.',
+							'key'           => 'field_h3vt_videos_url',
+							'label'         => 'Video',
+							'name'          => 'video_url',
+							'type'          => 'file',
+							'return_format' => 'array',
+							'mime_types'    => 'mp4,webm,mov',
 						),
 					),
 				),
@@ -641,7 +644,7 @@ class H3VT_Tours_ACF {
 					),
 				),
 			),
-			'menu_order' => 45,
+			'menu_order' => 25,
 		) );
 	}
 
