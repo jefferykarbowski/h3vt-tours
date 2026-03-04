@@ -34,6 +34,7 @@ class H3VT_Tours_ACF {
 		$this->register_testimonials();
 		$this->register_floorplans();
 		$this->register_embedded_tours();
+		$this->register_video_popup();
 		$this->register_contact();
 	}
 
@@ -217,6 +218,18 @@ class H3VT_Tours_ACF {
 					'max'           => 30,
 					'step'          => 1,
 					'prepend'       => 'seconds',
+				),
+				array(
+					'key'           => 'field_h3vt_tpl_theme',
+					'label'         => 'Theme',
+					'name'          => 'theme',
+					'type'          => 'select',
+					'choices'       => array(
+						'classic' => 'Classic',
+						'elegant' => 'Elegant',
+					),
+					'default_value' => 'classic',
+					'instructions'  => 'Classic: current look. Elegant: serif font, top-left title, decorative line, filled buttons.',
 				),
 			),
 			'location' => array(
@@ -567,6 +580,62 @@ class H3VT_Tours_ACF {
 				),
 			),
 			'menu_order' => 40,
+		) );
+	}
+
+	/**
+	 * Group: Video Popup.
+	 */
+	private function register_video_popup() {
+		$popup_conditional = array(
+			array(
+				array(
+					'field'    => 'field_h3vt_video_popup_enable',
+					'operator' => '==',
+					'value'    => '1',
+				),
+			),
+		);
+
+		acf_add_local_field_group( array(
+			'key'      => 'group_h3vt_video_popup',
+			'title'    => 'Video Popup',
+			'fields'   => array(
+				array(
+					'key'           => 'field_h3vt_video_popup_enable',
+					'label'         => 'Enable Video Popup',
+					'name'          => 'enable_video_popup',
+					'type'          => 'true_false',
+					'default_value' => 0,
+					'ui'            => 1,
+				),
+				array(
+					'key'               => 'field_h3vt_video_popup_label',
+					'label'             => 'Button Label',
+					'name'              => 'video_popup_label',
+					'type'              => 'text',
+					'default_value'     => 'Watch Video',
+					'conditional_logic' => $popup_conditional,
+				),
+				array(
+					'key'               => 'field_h3vt_video_popup_url',
+					'label'             => 'Video URL',
+					'name'              => 'video_popup_url',
+					'type'              => 'url',
+					'instructions'      => 'YouTube, Vimeo, or direct video URL.',
+					'conditional_logic' => $popup_conditional,
+				),
+			),
+			'location' => array(
+				array(
+					array(
+						'param'    => 'post_type',
+						'operator' => '==',
+						'value'    => 'h3vt_tour',
+					),
+				),
+			),
+			'menu_order' => 45,
 		) );
 	}
 

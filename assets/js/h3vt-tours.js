@@ -412,6 +412,12 @@
 				});
 				videoContainer.innerHTML = '';
 			}
+
+			// Clear video popup player.
+			var popupPlayer = modalEl.querySelector( '.h3vt-tour__video-popup-player' );
+			if ( popupPlayer ) {
+				popupPlayer.innerHTML = '';
+			}
 		}
 
 		// Bottom-bar buttons that trigger modals / panels.
@@ -462,13 +468,12 @@
 		 * ------------------------------------------------------------- */
 
 		/**
-		 * Load a video into the testimonial video container.
+		 * Load a video (YouTube, Vimeo, or direct) into a container element.
 		 *
-		 * @param {HTMLElement} modal     The testimonials modal element.
+		 * @param {HTMLElement} container The element to render the video into.
 		 * @param {string}      videoUrl  The URL of the video to embed.
 		 */
-		function loadTestimonialVideo( modal, videoUrl ) {
-			var container = modal.querySelector( '.h3vt-tour__testimonial-video' );
+		function loadVideo( container, videoUrl ) {
 			if ( ! container || ! videoUrl ) {
 				return;
 			}
@@ -512,6 +517,17 @@
 			container.appendChild( el );
 		}
 
+		/**
+		 * Load a video into the testimonial video container.
+		 *
+		 * @param {HTMLElement} modal     The testimonials modal element.
+		 * @param {string}      videoUrl  The URL of the video to embed.
+		 */
+		function loadTestimonialVideo( modal, videoUrl ) {
+			var container = modal.querySelector( '.h3vt-tour__testimonial-video' );
+			loadVideo( container, videoUrl );
+		}
+
 		// Auto-load the first testimonial video when modal opens.
 		var testimonialsModal = tourEl.querySelector( '.h3vt-tour__modal--testimonials' );
 		if ( testimonialsModal ) {
@@ -545,6 +561,29 @@
 				}
 			});
 		});
+
+		/* ---------------------------------------------------------------
+		 * 7b. Video Popup
+		 * ------------------------------------------------------------- */
+		var videoPopupModal = tourEl.querySelector( '.h3vt-tour__modal--video-popup' );
+		if ( videoPopupModal ) {
+			var vpObserver = new MutationObserver( function () {
+				var player = videoPopupModal.querySelector( '.h3vt-tour__video-popup-player' );
+				if ( ! videoPopupModal.hasAttribute( 'hidden' ) ) {
+					// Modal opened — load the video.
+					if ( player ) {
+						var videoUrl = player.getAttribute( 'data-video-url' );
+						loadVideo( player, videoUrl );
+					}
+				} else {
+					// Modal closed — stop playback.
+					if ( player ) {
+						player.innerHTML = '';
+					}
+				}
+			});
+			vpObserver.observe( videoPopupModal, { attributes: true, attributeFilter: [ 'hidden' ] } );
+		}
 
 		/* ---------------------------------------------------------------
 		 * 8. Floor Plans

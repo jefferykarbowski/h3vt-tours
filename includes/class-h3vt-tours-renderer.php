@@ -51,6 +51,7 @@ class H3VT_Tours_Renderer {
 			$icon            = get_field( 'icon', $template_id );
 			$button_style    = get_field( 'button_style', $template_id ) ?: 'text';
 			$autoplay_speed  = get_field( 'autoplay_speed', $template_id ) ?: 8;
+			$theme           = get_field( 'theme', $template_id ) ?: 'classic';
 		} else {
 			$primary_color   = '#FF6B00';
 			$secondary_color = '#1A1A1A';
@@ -59,6 +60,7 @@ class H3VT_Tours_Renderer {
 			$icon            = null;
 			$button_style    = 'text';
 			$autoplay_speed  = 8;
+			$theme           = 'classic';
 		}
 
 		/*
@@ -77,6 +79,7 @@ class H3VT_Tours_Renderer {
 			'hero_description' => get_field( 'hero_description', $post_id ) ?: '',
 			'button_style'     => $button_style,
 			'autoplay_speed'   => $autoplay_speed,
+			'theme'            => $theme,
 		);
 
 		/*
@@ -171,6 +174,16 @@ class H3VT_Tours_Renderer {
 		}
 
 		/*
+		 * Video popup.
+		 */
+		$video_popup_enabled = (bool) get_field( 'enable_video_popup', $post_id );
+		$video_popup         = array(
+			'enabled' => $video_popup_enabled,
+			'label'   => $video_popup_enabled ? ( get_field( 'video_popup_label', $post_id ) ?: __( 'Watch Video', 'h3vt-tours' ) ) : '',
+			'url'     => $video_popup_enabled ? ( get_field( 'video_popup_url', $post_id ) ?: '' ) : '',
+		);
+
+		/*
 		 * Contact.
 		 */
 		$contact_enabled = (bool) get_field( 'enable_contact', $post_id );
@@ -196,6 +209,7 @@ class H3VT_Tours_Renderer {
 				'items'   => $floorplans_items,
 			),
 			'embedded_tours'  => $embedded_tours,
+			'video_popup'     => $video_popup,
 			'contact'         => $contact,
 		);
 	}
@@ -215,9 +229,18 @@ class H3VT_Tours_Renderer {
 		$text      = esc_attr( $data['settings']['text_color'] );
 		$speed_ms  = absint( $data['settings']['autoplay_speed'] ) * 1000;
 
+		$theme       = $data['settings']['theme'];
+		$theme_class = 'classic' !== $theme ? ' h3vt-tour--theme-' . esc_attr( $theme ) : '';
+
 		ob_start();
+
+		if ( 'elegant' === $theme ) :
+			?>
+			<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap">
+			<?php
+		endif;
 		?>
-		<div class="h3vt-tour"
+		<div class="h3vt-tour<?php echo $theme_class; ?>"
 			style="--h3vt-primary:<?php echo $primary; ?>;--h3vt-secondary:<?php echo $secondary; ?>;--h3vt-text:<?php echo $text; ?>"
 			data-autoplay-speed="<?php echo esc_attr( $speed_ms ); ?>">
 			<?php
@@ -366,6 +389,10 @@ class H3VT_Tours_Renderer {
 					<?php self::render_bottom_button( __( 'Testimonials', 'h3vt-tours' ), 'testimonials', $data ); ?>
 				<?php endif; ?>
 
+				<?php if ( $data['video_popup']['enabled'] && ! empty( $data['video_popup']['url'] ) ) : ?>
+					<?php self::render_bottom_button( $data['video_popup']['label'], 'video-popup', $data ); ?>
+				<?php endif; ?>
+
 				<?php foreach ( $data['embedded_tours'] as $idx => $etour ) : ?>
 					<?php
 					$label = ! empty( $etour['tour_label'] ) ? $etour['tour_label'] : __( '3D Tour', 'h3vt-tours' );
@@ -454,6 +481,10 @@ class H3VT_Tours_Renderer {
 
 		foreach ( $data['embedded_tours'] as $idx => $etour ) {
 			self::render_3dtour_modal( $idx, $etour );
+		}
+
+		if ( $data['video_popup']['enabled'] && ! empty( $data['video_popup']['url'] ) ) {
+			self::render_video_popup_modal( $data );
 		}
 	}
 
@@ -632,6 +663,25 @@ class H3VT_Tours_Renderer {
 				<div class="h3vt-tour__3dtour-container" data-embed-url="<?php echo esc_url( $embed_url ); ?>">
 					<?php /* iframe injected by JS on open, removed on close */ ?>
 				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Video popup modal — single video container.
+	 *
+	 * @param array $data Tour data.
+	 */
+	private static function render_video_popup_modal( $data ) {
+		$label     = $data['video_popup']['label'];
+		$video_url = $data['video_popup']['url'];
+		?>
+		<div class="h3vt-tour__modal h3vt-tour__modal--video-popup" data-modal-name="video-popup" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr( $label ); ?>" hidden>
+			<div class="h3vt-tour__modal-backdrop"></div>
+			<div class="h3vt-tour__modal-content">
+				<button class="h3vt-tour__modal-close" aria-label="<?php esc_attr_e( 'Close', 'h3vt-tours' ); ?>">&times;</button>
+				<div class="h3vt-tour__video-popup-player" data-video-url="<?php echo esc_url( $video_url ); ?>"></div>
 			</div>
 		</div>
 		<?php
