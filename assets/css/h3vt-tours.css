@@ -361,11 +361,33 @@
 }
 
 .h3vt-tour .h3vt-tour__slide-description {
-	font-size: 1.1rem;
+	font-size: 1.25rem;
 	line-height: 1.5;
 	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 	opacity: 0.9;
 	color: var(--h3vt-text, #fff);
+}
+
+/* Slide content entrance animation */
+
+.h3vt-tour__slide--active .h3vt-tour__slide-title {
+	animation: h3vt-content-in 0.6s ease-out 0.3s both;
+}
+
+.h3vt-tour__slide--active .h3vt-tour__slide-description {
+	animation: h3vt-content-in 0.6s ease-out 0.5s both;
+}
+
+@keyframes h3vt-content-in {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 /* ==========================================================================
@@ -1159,7 +1181,7 @@
 	}
 
 	.h3vt-tour__slide-description {
-		font-size: 0.85rem;
+		font-size: 0.95rem;
 		display: -webkit-box;
 		-webkit-line-clamp: 3;
 		-webkit-box-orient: vertical;
@@ -1256,6 +1278,11 @@
 	}
 
 	.h3vt-tour__hotspot-dot {
+		animation: none !important;
+	}
+
+	.h3vt-tour__slide-title,
+	.h3vt-tour__slide-description {
 		animation: none !important;
 	}
 
