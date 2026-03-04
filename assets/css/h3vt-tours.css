@@ -504,8 +504,8 @@
 
 .h3vt-tour__bottom-btn--text:hover,
 .h3vt-tour__bottom-btn--text:focus-visible {
-	background: var(--h3vt-header-bg, #005a8c);
-	border-color: var(--h3vt-header-bg, #005a8c);
+	background: var(--h3vt-button-bg, #ff6b00);
+	border-color: var(--h3vt-button-bg, #ff6b00);
 	color: #fff;
 }
 

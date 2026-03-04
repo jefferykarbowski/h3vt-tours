@@ -32,13 +32,13 @@
 	display: block;
 	width: 60px;
 	height: 3px;
-	background: var(--h3vt-button-bg, #ff6b00);
+	background: var(--h3vt-text, #fff);
 	margin-bottom: 16px;
 }
 
 .h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text {
-	background: var(--h3vt-header-bg, #1A1A1A);
-	border-color: var(--h3vt-header-bg, #1A1A1A);
+	background: var(--h3vt-button-bg, #ff6b00);
+	border-color: var(--h3vt-button-bg, #ff6b00);
 }
 
 .h3vt-tour--theme-elegant .h3vt-tour__nav-button,
