@@ -123,11 +123,17 @@ class H3VT_Tours_REST_API {
 		}
 
 		if ( 'html' === $request->get_param( 'format' ) ) {
+			$data  = H3VT_Tours_Renderer::get_tour_data( $id );
+			$theme = $data['settings']['theme'];
+
 			return new WP_REST_Response(
-				array(
-					'html'    => H3VT_Tours_Renderer::render( $id, 'embed' ),
-					'css_url' => H3VT_TOURS_URL . 'assets/css/h3vt-tours.css',
-					'js_url'  => H3VT_TOURS_URL . 'assets/js/h3vt-tours.js',
+				array_merge(
+					array(
+						'html'    => H3VT_Tours_Renderer::render( $id, 'embed' ),
+						'css_url' => H3VT_TOURS_URL . 'assets/css/h3vt-tours.css',
+						'js_url'  => H3VT_TOURS_URL . 'assets/js/h3vt-tours.js',
+					),
+					H3VT_Tours_Theme_Loader::get_theme_asset_urls( $theme )
 				),
 				200
 			);

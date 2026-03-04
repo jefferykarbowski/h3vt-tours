@@ -62,6 +62,14 @@
 				document.head.appendChild( link );
 			}
 
+			// Inject theme stylesheet (if any).
+			if ( data.theme_css_url ) {
+				var themeLink  = document.createElement( 'link' );
+				themeLink.rel  = 'stylesheet';
+				themeLink.href = data.theme_css_url;
+				document.head.appendChild( themeLink );
+			}
+
 			// Insert the tour markup.
 			container.innerHTML = data.html;
 
@@ -70,6 +78,13 @@
 				var js  = document.createElement( 'script' );
 				js.src  = data.js_url;
 				document.body.appendChild( js );
+			}
+
+			// Load theme JS (if any).
+			if ( data.theme_js_url ) {
+				var themeJs  = document.createElement( 'script' );
+				themeJs.src  = data.theme_js_url;
+				document.body.appendChild( themeJs );
 			}
 		})
 		.catch( function ( err ) {

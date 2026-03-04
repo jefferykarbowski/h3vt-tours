@@ -1067,50 +1067,7 @@
 }
 
 /* ==========================================================================
-   15. Elegant Theme Overrides
-   ========================================================================== */
-
-.h3vt-tour--theme-elegant {
-	font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
-}
-
-.h3vt-tour--theme-elegant .h3vt-tour__header {
-	background: color-mix(in srgb, var(--h3vt-secondary, #1A1A1A) 92%, transparent);
-}
-
-.h3vt-tour--theme-elegant .h3vt-tour__slide-content {
-	top: 120px;
-	bottom: auto;
-	left: 40px;
-}
-
-.h3vt-tour--theme-elegant .h3vt-tour__slide-title {
-	font-style: italic;
-	font-weight: 400;
-	font-size: 2.8rem;
-}
-
-.h3vt-tour--theme-elegant .h3vt-tour__slide-title::before {
-	content: '';
-	display: block;
-	width: 60px;
-	height: 3px;
-	background: var(--h3vt-primary, #ff6b00);
-	margin-bottom: 16px;
-}
-
-.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text {
-	background: var(--h3vt-secondary, #1A1A1A);
-	border-color: var(--h3vt-secondary, #1A1A1A);
-}
-
-.h3vt-tour--theme-elegant .h3vt-tour__nav-button,
-.h3vt-tour--theme-elegant .h3vt-tour__dropdown-item {
-	font-family: inherit;
-}
-
-/* ==========================================================================
-   16. Fullscreen Adjustments
+   15. Fullscreen Adjustments
    ========================================================================== */
 
 .h3vt-tour--fullscreen {
@@ -1286,16 +1243,6 @@
 		background: rgba(255, 255, 255, 0.05);
 	}
 
-	/* Elegant theme mobile title positioning */
-	.h3vt-tour--theme-elegant .h3vt-tour__slide-content {
-		top: 80px;
-		left: 16px;
-		right: 16px;
-	}
-
-	.h3vt-tour--theme-elegant .h3vt-tour__slide-title {
-		font-size: 1.6rem;
-	}
 }
 
 /* ==========================================================================

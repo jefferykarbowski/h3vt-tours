@@ -71,6 +71,13 @@ class H3VT_Tours_Shortcode {
 			true
 		);
 
+		$template_id = get_field( 'tour_template', $id );
+		$theme       = 'classic';
+		if ( $template_id ) {
+			$theme = get_field( 'theme', absint( $template_id ) ) ?: 'classic';
+		}
+		H3VT_Tours_Theme_Loader::enqueue_theme_assets( $theme );
+
 		$height = esc_attr( $atts['height'] );
 
 		return sprintf(

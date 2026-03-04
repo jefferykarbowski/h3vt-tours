@@ -239,11 +239,7 @@ class H3VT_Tours_Renderer {
 
 		ob_start();
 
-		if ( 'elegant' === $theme ) :
-			?>
-			<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap">
-			<?php
-		endif;
+		echo H3VT_Tours_Theme_Loader::get_head_markup( $theme );
 		?>
 		<div class="h3vt-tour<?php echo $theme_class; ?>"
 			style="--h3vt-primary:<?php echo $primary; ?>;--h3vt-secondary:<?php echo $secondary; ?>;--h3vt-text:<?php echo $text; ?>"

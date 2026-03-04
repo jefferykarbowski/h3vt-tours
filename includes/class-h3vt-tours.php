@@ -51,6 +51,7 @@ class H3VT_Tours {
 		require_once $dir . 'class-h3vt-tours-acf.php';
 		require_once $dir . 'class-h3vt-tours-template.php';
 		require_once $dir . 'class-h3vt-tours-renderer.php';
+		require_once $dir . 'class-h3vt-tours-theme-loader.php';
 		require_once $dir . 'class-h3vt-tours-shortcode.php';
 		require_once $dir . 'class-h3vt-tours-rest-api.php';
 		require_once $dir . 'class-h3vt-tours-embed.php';

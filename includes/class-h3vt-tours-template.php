@@ -57,5 +57,13 @@ class H3VT_Tours_Template {
 			H3VT_TOURS_VERSION,
 			true
 		);
+
+		$post_id     = get_the_ID();
+		$template_id = get_field( 'tour_template', $post_id );
+		$theme       = 'classic';
+		if ( $template_id ) {
+			$theme = get_field( 'theme', absint( $template_id ) ) ?: 'classic';
+		}
+		H3VT_Tours_Theme_Loader::enqueue_theme_assets( $theme );
 	}
 }

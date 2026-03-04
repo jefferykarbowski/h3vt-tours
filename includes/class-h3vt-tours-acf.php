@@ -21,6 +21,7 @@ class H3VT_Tours_ACF {
 		add_action( 'acf/init', array( $this, 'register_fields' ) );
 		add_filter( 'acf/load_field/name=slide_nav_category', array( $this, 'populate_nav_categories' ) );
 		add_filter( 'acf/load_field/name=slide_floorplan', array( $this, 'populate_floorplan_choices' ) );
+		add_filter( 'acf/load_field/name=theme', array( $this, 'populate_theme_choices' ) );
 	}
 
 	/**
@@ -224,12 +225,8 @@ class H3VT_Tours_ACF {
 					'label'         => 'Theme',
 					'name'          => 'theme',
 					'type'          => 'select',
-					'choices'       => array(
-						'classic' => 'Classic',
-						'elegant' => 'Elegant',
-					),
+					'choices'       => array(),
 					'default_value' => 'classic',
-					'instructions'  => 'Classic: current look. Elegant: serif font, top-left title, decorative line, filled buttons.',
 				),
 			),
 			'location' => array(
@@ -799,6 +796,17 @@ class H3VT_Tours_ACF {
 
 		$field['choices'] = $choices;
 
+		return $field;
+	}
+
+	/**
+	 * Dynamically populate the theme select field with discovered themes.
+	 *
+	 * @param array $field ACF field config.
+	 * @return array
+	 */
+	public function populate_theme_choices( $field ) {
+		$field['choices'] = H3VT_Tours_Theme_Loader::get_theme_choices();
 		return $field;
 	}
 }
