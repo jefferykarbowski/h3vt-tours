@@ -20,6 +20,7 @@ class H3VT_Tours_Template {
 	public function __construct() {
 		add_filter( 'template_include', array( $this, 'template_include' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'dequeue_theme_assets' ), 999 );
 	}
 
 	/**
@@ -65,5 +66,28 @@ class H3VT_Tours_Template {
 			$theme = get_field( 'theme', absint( $template_id ) ) ?: 'classic';
 		}
 		H3VT_Tours_Theme_Loader::enqueue_theme_assets( $theme );
+	}
+
+	/**
+	 * Dequeue all non-plugin styles on single tour pages.
+	 *
+	 * The tour template is a standalone full-screen page — theme styles
+	 * only cause conflicts (e.g. heading color overrides).
+	 */
+	public function dequeue_theme_assets() {
+		if ( ! is_singular( 'h3vt_tour' ) ) {
+			return;
+		}
+
+		global $wp_styles;
+		if ( ! $wp_styles ) {
+			return;
+		}
+
+		foreach ( $wp_styles->registered as $handle => $dep ) {
+			if ( 0 !== strpos( $handle, 'h3vt-tours' ) ) {
+				wp_dequeue_style( $handle );
+			}
+		}
 	}
 }
