@@ -434,6 +434,14 @@
 					);
 				}
 
+				// Single video with an index: "video-0", "video-1", etc.
+				var videoMatch = value.match( /^video-(\d+)$/ );
+				if ( videoMatch ) {
+					modalEl = tourEl.querySelector(
+						'.h3vt-tour__modal--single-video[data-modal-name="' + value + '"]'
+					);
+				}
+
 				if ( ! modalEl ) {
 					modalEl = tourEl.querySelector( '.h3vt-tour__modal--' + value )
 						   || tourEl.querySelector( '.h3vt-tour__panel--' + value );
@@ -598,6 +606,20 @@
 					loadVideo( player, videoUrl );
 				}
 			});
+		});
+
+		// Auto-play single-video modals when opened.
+		tourEl.querySelectorAll( '.h3vt-tour__modal--single-video' ).forEach( function ( singleModal ) {
+			var svObserver = new MutationObserver( function () {
+				if ( ! singleModal.hasAttribute( 'hidden' ) ) {
+					var videoUrl = singleModal.getAttribute( 'data-video-url' );
+					var player   = singleModal.querySelector( '.h3vt-tour__videos-player' );
+					if ( player && videoUrl ) {
+						loadVideo( player, videoUrl );
+					}
+				}
+			});
+			svObserver.observe( singleModal, { attributes: true, attributeFilter: [ 'hidden' ] } );
 		});
 
 		/* ---------------------------------------------------------------

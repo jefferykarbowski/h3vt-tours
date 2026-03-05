@@ -1088,6 +1088,14 @@
 	border-color: var(--h3vt-button-bg, #ff6b00);
 }
 
+/* Single-video modal (no carousel). */
+.h3vt-tour__modal--single-video .h3vt-tour__modal-content {
+	width: 800px;
+	max-width: 95vw;
+	padding: 0;
+	overflow: hidden;
+}
+
 /* ==========================================================================
    15. Fullscreen Adjustments
    ========================================================================== */

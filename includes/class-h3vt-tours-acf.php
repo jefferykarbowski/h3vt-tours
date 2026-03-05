@@ -634,6 +634,37 @@ class H3VT_Tours_ACF {
 						),
 					),
 				),
+				array(
+					'key'               => 'field_h3vt_videos_slideshow',
+					'label'             => 'Bundle as Slideshow',
+					'name'              => 'video_slideshow',
+					'type'              => 'true_false',
+					'instructions'      => 'Enable to combine all videos into a single slideshow button instead of individual buttons.',
+					'default_value'     => 0,
+					'ui'                => 1,
+					'conditional_logic' => $videos_conditional,
+				),
+				array(
+					'key'               => 'field_h3vt_videos_slideshow_label',
+					'label'             => 'Slideshow Button Label',
+					'name'              => 'video_slideshow_label',
+					'type'              => 'text',
+					'placeholder'       => 'Videos',
+					'conditional_logic' => array(
+						array(
+							array(
+								'field'    => 'field_h3vt_videos_enable',
+								'operator' => '==',
+								'value'    => '1',
+							),
+							array(
+								'field'    => 'field_h3vt_videos_slideshow',
+								'operator' => '==',
+								'value'    => '1',
+							),
+						),
+					),
+				),
 			),
 			'location' => array(
 				array(

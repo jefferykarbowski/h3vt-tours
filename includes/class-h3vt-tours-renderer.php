@@ -217,8 +217,10 @@ class H3VT_Tours_Renderer {
 			),
 			'embedded_tours'  => $embedded_tours,
 			'videos'          => array(
-				'enabled' => $videos_enabled,
-				'items'   => $videos_items,
+				'enabled'         => $videos_enabled,
+				'items'           => $videos_items,
+				'slideshow'       => $videos_enabled ? (bool) get_field( 'video_slideshow', $post_id ) : false,
+				'slideshow_label' => $videos_enabled ? ( get_field( 'video_slideshow_label', $post_id ) ?: __( 'Videos', 'h3vt-tours' ) ) : '',
 			),
 			'contact'         => $contact,
 		);
@@ -396,7 +398,16 @@ class H3VT_Tours_Renderer {
 				<?php endif; ?>
 
 				<?php if ( $data['videos']['enabled'] && ! empty( $data['videos']['items'] ) ) : ?>
-					<?php self::render_bottom_button( __( 'Videos', 'h3vt-tours' ), 'videos', $data ); ?>
+					<?php if ( $data['videos']['slideshow'] ) : ?>
+						<?php self::render_bottom_button( $data['videos']['slideshow_label'], 'videos', $data ); ?>
+					<?php else : ?>
+						<?php foreach ( $data['videos']['items'] as $vi => $video ) : ?>
+							<?php
+							$label = ! empty( $video['video_label'] ) ? $video['video_label'] : __( 'Video', 'h3vt-tours' );
+							self::render_bottom_button( $label, 'video-' . $vi, $data );
+							?>
+						<?php endforeach; ?>
+					<?php endif; ?>
 				<?php endif; ?>
 
 				<?php foreach ( $data['embedded_tours'] as $idx => $etour ) : ?>
@@ -490,7 +501,13 @@ class H3VT_Tours_Renderer {
 		}
 
 		if ( $data['videos']['enabled'] && ! empty( $data['videos']['items'] ) ) {
-			self::render_videos_modal( $data );
+			if ( $data['videos']['slideshow'] ) {
+				self::render_videos_modal( $data );
+			} else {
+				foreach ( $data['videos']['items'] as $vi => $video ) {
+					self::render_single_video_modal( $vi, $video );
+				}
+			}
 		}
 	}
 
@@ -700,6 +717,31 @@ class H3VT_Tours_Renderer {
 						</button>
 					<?php endforeach; ?>
 				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Single-video modal (used when slideshow mode is off).
+	 *
+	 * @param int   $index Index of this video in the items array.
+	 * @param array $video Video item with video_label and video_url.
+	 */
+	private static function render_single_video_modal( $index, $video ) {
+		$video_file = $video['video_url'];
+		$video_url  = ( ! empty( $video_file ) && is_array( $video_file ) ) ? $video_file['url'] : '';
+		$label      = ! empty( $video['video_label'] ) ? $video['video_label'] : __( 'Video', 'h3vt-tours' );
+		?>
+		<div class="h3vt-tour__modal h3vt-tour__modal--single-video"
+			data-modal-name="video-<?php echo esc_attr( $index ); ?>"
+			data-video-url="<?php echo esc_url( $video_url ); ?>"
+			role="dialog" aria-modal="true"
+			aria-label="<?php echo esc_attr( $label ); ?>" hidden>
+			<div class="h3vt-tour__modal-backdrop"></div>
+			<div class="h3vt-tour__modal-content">
+				<button class="h3vt-tour__modal-close" aria-label="<?php esc_attr_e( 'Close', 'h3vt-tours' ); ?>">&times;</button>
+				<div class="h3vt-tour__videos-player"></div>
 			</div>
 		</div>
 		<?php
