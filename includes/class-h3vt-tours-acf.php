@@ -182,6 +182,14 @@ class H3VT_Tours_ACF {
 					'default_value' => '#FFFFFF',
 				),
 				array(
+					'key'           => 'field_h3vt_tpl_hover_color',
+					'label'         => 'Hover Color',
+					'name'          => 'hover_color',
+					'type'          => 'color_picker',
+					'default_value' => '',
+					'instructions'  => 'Color used for hover states on buttons and links. Defaults to Button Backgrounds color if empty.',
+				),
+				array(
 					'key'           => 'field_h3vt_tpl_logo',
 					'label'         => 'Logo',
 					'name'          => 'logo',

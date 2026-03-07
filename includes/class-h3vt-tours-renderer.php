@@ -47,6 +47,7 @@ class H3VT_Tours_Renderer {
 			$primary_color   = get_field( 'primary_color', $template_id ) ?: '#FF6B00';
 			$secondary_color = get_field( 'secondary_color', $template_id ) ?: '#1A1A1A';
 			$text_color      = get_field( 'text_color', $template_id ) ?: '#FFFFFF';
+			$hover_color     = get_field( 'hover_color', $template_id ) ?: '';
 			$logo            = get_field( 'logo', $template_id );
 			$icon            = get_field( 'icon', $template_id );
 			$button_style    = get_field( 'button_style', $template_id ) ?: 'text';
@@ -56,6 +57,7 @@ class H3VT_Tours_Renderer {
 			$primary_color   = '#FF6B00';
 			$secondary_color = '#1A1A1A';
 			$text_color      = '#FFFFFF';
+			$hover_color     = '';
 			$logo            = null;
 			$icon            = null;
 			$button_style    = 'text';
@@ -70,6 +72,7 @@ class H3VT_Tours_Renderer {
 			'primary_color'    => $primary_color,
 			'secondary_color'  => $secondary_color,
 			'text_color'       => $text_color,
+			'hover_color'      => $hover_color,
 			'logo'             => $logo,
 			'icon'             => $icon,
 			'hero_image'       => get_field( 'hero_image', $post_id ),
@@ -239,8 +242,10 @@ class H3VT_Tours_Renderer {
 		$button_bg = esc_attr( $data['settings']['primary_color'] );
 		$header_bg = esc_attr( $data['settings']['secondary_color'] );
 		$text      = esc_attr( $data['settings']['text_color'] );
+		$hover     = esc_attr( $data['settings']['hover_color'] );
 		$speed_ms  = absint( $data['settings']['autoplay_speed'] ) * 1000;
 
+		$hover_css   = $hover ? ';--h3vt-hover:' . $hover : '';
 		$theme       = $data['settings']['theme'];
 		$theme_class = 'classic' !== $theme ? ' h3vt-tour--theme-' . esc_attr( $theme ) : '';
 
@@ -249,7 +254,7 @@ class H3VT_Tours_Renderer {
 		echo H3VT_Tours_Theme_Loader::get_head_markup( $theme );
 		?>
 		<div class="h3vt-tour<?php echo $theme_class; ?>"
-			style="--h3vt-button-bg:<?php echo $button_bg; ?>;--h3vt-header-bg:<?php echo $header_bg; ?>;--h3vt-text:<?php echo $text; ?>"
+			style="--h3vt-button-bg:<?php echo $button_bg; ?>;--h3vt-header-bg:<?php echo $header_bg; ?>;--h3vt-text:<?php echo $text; ?><?php echo $hover_css; ?>"
 			data-autoplay-speed="<?php echo esc_attr( $speed_ms ); ?>">
 			<?php
 			self::render_header( $data );
