@@ -1098,6 +1098,75 @@
 }
 
 /* ==========================================================================
+   14b. PDF Lightbox Modal
+   ========================================================================== */
+
+.h3vt-tour__modal--pdf .h3vt-tour__modal-content {
+	width: 90vw;
+	height: 85vh;
+	max-width: 1000px;
+	padding: 0;
+	overflow: hidden;
+}
+
+.h3vt-tour__pdf-container {
+	width: 100%;
+	height: 100%;
+}
+
+.h3vt-tour__pdf-container iframe {
+	width: 100%;
+	height: 100%;
+	border: none;
+	display: block;
+}
+
+/* ==========================================================================
+   14c. Social Media Sidebar
+   ========================================================================== */
+
+.h3vt-tour__social {
+	position: absolute;
+	right: 16px;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 90;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.h3vt-tour__social-link {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background: rgba(0, 0, 0, 0.5);
+	color: var(--h3vt-text, #fff);
+	text-decoration: none;
+	transition: background 0.2s, transform 0.2s;
+}
+
+.h3vt-tour__social-link:hover,
+.h3vt-tour__social-link:focus-visible {
+	background: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	transform: scale(1.15);
+}
+
+.h3vt-tour__social-link:focus-visible {
+	outline: 2px solid var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	outline-offset: 2px;
+}
+
+.h3vt-tour__social-link svg {
+	width: 18px;
+	height: 18px;
+	fill: currentColor;
+}
+
+/* ==========================================================================
    15. Fullscreen Adjustments
    ========================================================================== */
 
@@ -1274,6 +1343,31 @@
 		background: rgba(255, 255, 255, 0.05);
 	}
 
+	/* Social sidebar — horizontal row at top-right on mobile */
+	.h3vt-tour__social {
+		top: auto;
+		bottom: 140px;
+		right: 8px;
+		transform: none;
+		gap: 6px;
+	}
+
+	.h3vt-tour__social-link {
+		width: 30px;
+		height: 30px;
+	}
+
+	.h3vt-tour__social-link svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	/* PDF modal full width on mobile */
+	.h3vt-tour__modal--pdf .h3vt-tour__modal-content {
+		width: 95vw;
+		height: 80vh;
+	}
+
 }
 
 /* ==========================================================================
@@ -1321,7 +1415,8 @@
 	.h3vt-tour__bottom-bar,
 	.h3vt-tour__controls,
 	.h3vt-tour__fullscreen-btn,
-	.h3vt-tour__hamburger {
+	.h3vt-tour__hamburger,
+	.h3vt-tour__social {
 		display: none !important;
 	}
 

@@ -401,6 +401,12 @@
 				tourContainer.innerHTML = '';
 			}
 
+			// Remove PDF iframes.
+			var pdfContainer = modalEl.querySelector( '.h3vt-tour__pdf-container' );
+			if ( pdfContainer ) {
+				pdfContainer.innerHTML = '';
+			}
+
 			// Pause / remove testimonial videos.
 			var videoContainer = modalEl.querySelector( '.h3vt-tour__testimonial-video' );
 			if ( videoContainer ) {
@@ -704,6 +710,30 @@
 							iframe.frameBorder = '0';
 							iframe.allowFullscreen = true;
 							iframe.setAttribute( 'allow', 'xr-spatial-tracking' );
+							container.appendChild( iframe );
+						}
+					}
+				}
+			});
+			observer.observe( modal, { attributes: true, attributeFilter: [ 'hidden' ] } );
+		});
+
+		/* ---------------------------------------------------------------
+		 * 9b. PDF Lightbox
+		 * ------------------------------------------------------------- */
+		tourEl.querySelectorAll( '.h3vt-tour__modal--pdf' ).forEach( function ( modal ) {
+			var observer = new MutationObserver( function () {
+				if ( ! modal.hasAttribute( 'hidden' ) ) {
+					var container = modal.querySelector( '.h3vt-tour__pdf-container' );
+					if ( container && container.children.length === 0 ) {
+						var pdfUrl = container.getAttribute( 'data-pdf-url' );
+						if ( pdfUrl ) {
+							var iframe = document.createElement( 'iframe' );
+							iframe.src = pdfUrl;
+							iframe.width = '100%';
+							iframe.height = '100%';
+							iframe.frameBorder = '0';
+							iframe.title = 'PDF Document';
 							container.appendChild( iframe );
 						}
 					}
