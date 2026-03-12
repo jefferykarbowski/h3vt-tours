@@ -407,7 +407,7 @@
 				pdfContainer.innerHTML = '';
 			}
 
-			// Pause / remove testimonial videos.
+			// Pause / remove testimonial videos and iframes.
 			var videoContainer = modalEl.querySelector( '.h3vt-tour__testimonial-video' );
 			if ( videoContainer ) {
 				var videos = videoContainer.querySelectorAll( 'video' );
@@ -416,8 +416,17 @@
 					v.removeAttribute( 'src' );
 					v.load();
 				});
+				var iframes = videoContainer.querySelectorAll( 'iframe' );
+				iframes.forEach( function ( f ) {
+					f.src = '';
+				});
 				videoContainer.innerHTML = '';
 			}
+
+			// Reset active testimonial thumb so the first one loads again next time.
+			modalEl.querySelectorAll( '.h3vt-tour__testimonial-thumb--active' ).forEach( function ( t ) {
+				t.classList.remove( 'h3vt-tour__testimonial-thumb--active' );
+			});
 
 			// Clear videos player.
 			var videosPlayer = modalEl.querySelector( '.h3vt-tour__videos-player' );
@@ -487,7 +496,7 @@
 		 * @param {HTMLElement} container The element to render the video into.
 		 * @param {string}      videoUrl  The URL of the video to embed.
 		 */
-		function loadVideo( container, videoUrl ) {
+		function loadVideo( container, videoUrl, onEnded ) {
 			if ( ! container || ! videoUrl ) {
 				return;
 			}
@@ -505,12 +514,35 @@
 
 			if ( youtubeMatch ) {
 				el = document.createElement( 'iframe' );
-				el.src = 'https://www.youtube.com/embed/' + youtubeMatch[1] + '?autoplay=1';
+				el.src = 'https://www.youtube.com/embed/' + youtubeMatch[1] + '?autoplay=1&enablejsapi=1';
 				el.width = '100%';
 				el.height = '100%';
 				el.frameBorder = '0';
 				el.allow = 'autoplay; encrypted-media';
 				el.allowFullscreen = true;
+				el.id = 'h3vt-yt-player-' + Date.now();
+
+				if ( onEnded ) {
+					var onYTMessage = function ( event ) {
+						var data;
+						if ( typeof event.data === 'string' ) {
+							try { data = JSON.parse( event.data ); } catch ( e ) { return; }
+						} else {
+							data = event.data;
+						}
+						if ( data && data.event === 'onStateChange' && data.info === 0 ) {
+							window.removeEventListener( 'message', onYTMessage );
+							onEnded();
+						}
+					};
+					window.addEventListener( 'message', onYTMessage );
+					el.addEventListener( 'load', function () {
+						el.contentWindow.postMessage(
+							JSON.stringify({ event: 'listening', id: el.id }),
+							'*'
+						);
+					});
+				}
 			} else if ( vimeoMatch ) {
 				el = document.createElement( 'iframe' );
 				el.src = 'https://player.vimeo.com/video/' + vimeoMatch[1] + '?autoplay=1';
@@ -519,6 +551,28 @@
 				el.frameBorder = '0';
 				el.allow = 'autoplay';
 				el.allowFullscreen = true;
+
+				if ( onEnded ) {
+					var onVimeoMessage = function ( event ) {
+						var data;
+						if ( typeof event.data === 'string' ) {
+							try { data = JSON.parse( event.data ); } catch ( e ) { return; }
+						} else {
+							data = event.data;
+						}
+						if ( data && data.event === 'ended' ) {
+							window.removeEventListener( 'message', onVimeoMessage );
+							onEnded();
+						}
+					};
+					window.addEventListener( 'message', onVimeoMessage );
+					el.addEventListener( 'load', function () {
+						el.contentWindow.postMessage(
+							JSON.stringify({ method: 'addEventListener', value: 'ended' }),
+							'*'
+						);
+					});
+				}
 			} else {
 				el = document.createElement( 'video' );
 				el.src = videoUrl;
@@ -526,20 +580,44 @@
 				el.autoplay = true;
 				el.style.width = '100%';
 				el.style.height = '100%';
+
+				if ( onEnded ) {
+					el.addEventListener( 'ended', onEnded );
+				}
 			}
 
 			container.appendChild( el );
 		}
 
 		/**
+		 * Advance to the next testimonial video, or loop back to the first.
+		 *
+		 * @param {HTMLElement} modal The testimonials modal element.
+		 */
+		function advanceTestimonial( modal ) {
+			var thumbs  = modal.querySelectorAll( '.h3vt-tour__testimonial-thumb' );
+			var active  = modal.querySelector( '.h3vt-tour__testimonial-thumb--active' );
+			if ( ! thumbs.length ) {
+				return;
+			}
+
+			var currentIndex = active ? Array.prototype.indexOf.call( thumbs, active ) : 0;
+			var nextIndex    = ( currentIndex + 1 ) % thumbs.length;
+			thumbs[ nextIndex ].click();
+		}
+
+		/**
 		 * Load a video into the testimonial video container.
+		 * When the video ends it automatically advances to the next testimonial.
 		 *
 		 * @param {HTMLElement} modal     The testimonials modal element.
 		 * @param {string}      videoUrl  The URL of the video to embed.
 		 */
 		function loadTestimonialVideo( modal, videoUrl ) {
 			var container = modal.querySelector( '.h3vt-tour__testimonial-video' );
-			loadVideo( container, videoUrl );
+			loadVideo( container, videoUrl, function () {
+				advanceTestimonial( modal );
+			});
 		}
 
 		// Auto-load the first testimonial video when modal opens.
