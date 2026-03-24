@@ -44,18 +44,21 @@ class H3VT_Tours_Renderer {
 		}
 
 		if ( $use_template ) {
-			$primary_color   = get_field( 'primary_color', $template_id ) ?: '#FF6B00';
-			$secondary_color = get_field( 'secondary_color', $template_id ) ?: '#1A1A1A';
-			$text_color      = get_field( 'text_color', $template_id ) ?: '#FFFFFF';
-			$hover_color     = get_field( 'hover_color', $template_id ) ?: '';
-			$logo            = get_field( 'logo', $template_id );
-			$icon            = get_field( 'icon', $template_id );
-			$button_style    = get_field( 'button_style', $template_id ) ?: 'text';
-			$autoplay_speed  = get_field( 'autoplay_speed', $template_id ) ?: 8;
-			$theme           = get_field( 'theme', $template_id ) ?: 'classic';
-			$pdf_file        = get_field( 'pdf_file', $template_id );
-			$pdf_button_text = get_field( 'pdf_button_text', $template_id ) ?: __( 'Brochure', 'h3vt-tours' );
-			$socials         = array(
+			$primary_color          = get_field( 'primary_color', $template_id ) ?: '#FF6B00';
+			$secondary_color        = get_field( 'secondary_color', $template_id ) ?: '#1A1A1A';
+			$text_color             = get_field( 'text_color', $template_id ) ?: '#FFFFFF';
+			$hover_color            = get_field( 'hover_color', $template_id ) ?: '';
+			$button_gradient_color  = get_field( 'button_gradient_color', $template_id ) ?: '';
+			$header_gradient_color  = get_field( 'header_gradient_color', $template_id ) ?: '';
+			$dropdown_hover_color   = get_field( 'dropdown_hover_color', $template_id ) ?: '';
+			$logo                   = get_field( 'logo', $template_id );
+			$icon                   = get_field( 'icon', $template_id );
+			$button_style           = get_field( 'button_style', $template_id ) ?: 'text';
+			$autoplay_speed         = get_field( 'autoplay_speed', $template_id ) ?: 8;
+			$theme                  = get_field( 'theme', $template_id ) ?: 'classic';
+			$pdf_file               = get_field( 'pdf_file', $template_id );
+			$pdf_button_text        = get_field( 'pdf_button_text', $template_id ) ?: __( 'Brochure', 'h3vt-tours' );
+			$socials                = array(
 				'facebook'  => get_field( 'social_facebook', $template_id ) ?: '',
 				'instagram' => get_field( 'social_instagram', $template_id ) ?: '',
 				'youtube'   => get_field( 'social_youtube', $template_id ) ?: '',
@@ -65,29 +68,35 @@ class H3VT_Tours_Renderer {
 				'pinterest' => get_field( 'social_pinterest', $template_id ) ?: '',
 			);
 		} else {
-			$primary_color   = '#FF6B00';
-			$secondary_color = '#1A1A1A';
-			$text_color      = '#FFFFFF';
-			$hover_color     = '';
-			$logo            = null;
-			$icon            = null;
-			$button_style    = 'text';
-			$autoplay_speed  = 8;
-			$theme           = 'classic';
-			$pdf_file        = null;
-			$pdf_button_text = __( 'Brochure', 'h3vt-tours' );
-			$socials         = array();
+			$primary_color          = '#FF6B00';
+			$secondary_color        = '#1A1A1A';
+			$text_color             = '#FFFFFF';
+			$hover_color            = '';
+			$button_gradient_color  = '';
+			$header_gradient_color  = '';
+			$dropdown_hover_color   = '';
+			$logo                   = null;
+			$icon                   = null;
+			$button_style           = 'text';
+			$autoplay_speed         = 8;
+			$theme                  = 'classic';
+			$pdf_file               = null;
+			$pdf_button_text        = __( 'Brochure', 'h3vt-tours' );
+			$socials                = array();
 		}
 
 		/*
 		 * Settings.
 		 */
 		$settings = array(
-			'primary_color'    => $primary_color,
-			'secondary_color'  => $secondary_color,
-			'text_color'       => $text_color,
-			'hover_color'      => $hover_color,
-			'logo'             => $logo,
+			'primary_color'          => $primary_color,
+			'secondary_color'        => $secondary_color,
+			'text_color'             => $text_color,
+			'hover_color'            => $hover_color,
+			'button_gradient_color'  => $button_gradient_color,
+			'header_gradient_color'  => $header_gradient_color,
+			'dropdown_hover_color'   => $dropdown_hover_color,
+			'logo'                   => $logo,
 			'icon'             => $icon,
 			'hero_image'       => get_field( 'hero_image', $post_id ),
 			'hero_media_type'  => get_field( 'hero_media_type', $post_id ) ?: 'image',
@@ -256,13 +265,29 @@ class H3VT_Tours_Renderer {
 	public static function render( $post_id, $context = 'template' ) {
 		$data = self::get_tour_data( $post_id );
 
-		$button_bg = esc_attr( $data['settings']['primary_color'] );
-		$header_bg = esc_attr( $data['settings']['secondary_color'] );
-		$text      = esc_attr( $data['settings']['text_color'] );
-		$hover     = esc_attr( $data['settings']['hover_color'] );
-		$speed_ms  = absint( $data['settings']['autoplay_speed'] ) * 1000;
+		$button_bg       = esc_attr( $data['settings']['primary_color'] );
+		$header_bg       = esc_attr( $data['settings']['secondary_color'] );
+		$text            = esc_attr( $data['settings']['text_color'] );
+		$hover           = esc_attr( $data['settings']['hover_color'] );
+		$btn_gradient    = esc_attr( $data['settings']['button_gradient_color'] );
+		$hdr_gradient    = esc_attr( $data['settings']['header_gradient_color'] );
+		$dropdown_hover  = esc_attr( $data['settings']['dropdown_hover_color'] );
+		$speed_ms        = absint( $data['settings']['autoplay_speed'] ) * 1000;
 
-		$hover_css   = $hover ? ';--h3vt-hover:' . $hover : '';
+		$extra_css = '';
+		if ( $hover ) {
+			$extra_css .= ';--h3vt-hover:' . $hover;
+		}
+		if ( $btn_gradient ) {
+			$extra_css .= ';--h3vt-button-gradient:' . $btn_gradient;
+		}
+		if ( $hdr_gradient ) {
+			$extra_css .= ';--h3vt-header-gradient:' . $hdr_gradient;
+		}
+		if ( $dropdown_hover ) {
+			$extra_css .= ';--h3vt-dropdown-hover:' . $dropdown_hover;
+		}
+
 		$theme       = $data['settings']['theme'];
 		$theme_class = 'classic' !== $theme ? ' h3vt-tour--theme-' . esc_attr( $theme ) : '';
 
@@ -271,7 +296,7 @@ class H3VT_Tours_Renderer {
 		echo H3VT_Tours_Theme_Loader::get_head_markup( $theme );
 		?>
 		<div class="h3vt-tour<?php echo $theme_class; ?>"
-			style="--h3vt-button-bg:<?php echo $button_bg; ?>;--h3vt-header-bg:<?php echo $header_bg; ?>;--h3vt-text:<?php echo $text; ?><?php echo $hover_css; ?>"
+			style="--h3vt-button-bg:<?php echo $button_bg; ?>;--h3vt-header-bg:<?php echo $header_bg; ?>;--h3vt-text:<?php echo $text; ?><?php echo $extra_css; ?>"
 			data-autoplay-speed="<?php echo esc_attr( $speed_ms ); ?>">
 			<?php
 			self::render_header( $data );

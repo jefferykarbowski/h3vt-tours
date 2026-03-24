@@ -161,7 +161,7 @@
 
 .h3vt-tour__dropdown-item:hover,
 .h3vt-tour__dropdown-item:focus-visible {
-	background: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	background: var(--h3vt-dropdown-hover, var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00)));
 	color: #fff;
 }
 

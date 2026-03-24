@@ -15,7 +15,7 @@
 /* ---------- Header ---------- */
 
 .h3vt-tour--theme-elegant .h3vt-tour__header {
-	background: linear-gradient(to bottom, color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 95%, transparent), color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 80%, transparent));
+	background: linear-gradient(to bottom, var(--h3vt-header-bg, #1A1A1A), var(--h3vt-header-gradient, var(--h3vt-header-bg, #1A1A1A)));
 }
 
 /* ---------- Slide content / title ---------- */
@@ -66,7 +66,7 @@
 	stroke: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
 }
 
-/* ---------- Bottom bar buttons — consistent size + gradient bg ---------- */
+/* ---------- Bottom bar buttons — consistent size, filled with button-bg ---------- */
 
 .h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text {
 	min-width: 130px;
@@ -75,10 +75,10 @@
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
-	border: 2px solid rgba(255, 255, 255, 0.3);
+	border: 2px solid var(--h3vt-button-bg, #ff6b00);
 	border-radius: 6px;
-	background: linear-gradient(to bottom, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-	backdrop-filter: blur(4px);
+	background: linear-gradient(to bottom, var(--h3vt-button-bg, #ff6b00), var(--h3vt-button-gradient, var(--h3vt-button-bg, #ff6b00)));
+	color: var(--h3vt-text, #fff);
 	text-align: center;
 	justify-content: center;
 }
@@ -93,10 +93,10 @@
 .h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--icon {
 	min-width: 130px;
 	padding: 8px 12px;
-	border: 2px solid rgba(255, 255, 255, 0.3);
+	border: 2px solid var(--h3vt-button-bg, #ff6b00);
 	border-radius: 6px;
-	background: linear-gradient(to bottom, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-	backdrop-filter: blur(4px);
+	background: linear-gradient(to bottom, var(--h3vt-button-bg, #ff6b00), var(--h3vt-button-gradient, var(--h3vt-button-bg, #ff6b00)));
+	color: var(--h3vt-text, #fff);
 	text-align: center;
 	justify-content: center;
 }
@@ -115,6 +115,27 @@
 	background: transparent;
 	color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
 	border-color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+}
+
+/* ---------- Dropdown hover — uses dedicated dropdown-hover var ---------- */
+
+.h3vt-tour--theme-elegant .h3vt-tour__dropdown-item:hover,
+.h3vt-tour--theme-elegant .h3vt-tour__dropdown-item:focus-visible {
+	background: var(--h3vt-dropdown-hover, var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00)));
+	color: #fff;
+}
+
+/* ---------- Floor plan selector — light text on dark background ---------- */
+
+.h3vt-tour--theme-elegant .h3vt-tour__floorplan-select {
+	background: #222;
+	color: #fff;
+	border-color: rgba(255, 255, 255, 0.3);
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__floorplan-select option {
+	background: #222;
+	color: #fff;
 }
 
 /* ---------- Contact modal — side-by-side layout like 3D Vista ---------- */
@@ -291,9 +312,10 @@
 
 	.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text,
 	.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--icon {
-		min-width: 90px;
+		min-width: 80px;
 		padding: 6px 10px;
 		font-size: 10px;
+		border-width: 1.5px;
 	}
 
 	/* Contact modal stacks on mobile */
