@@ -1,30 +1,43 @@
 /**
  * Elegant Theme — H3VT Tours
  *
- * Serif font, top-left title, decorative line, filled buttons.
+ * Clean sans-serif font, top-left title, decorative line,
+ * consistent bottom buttons with gradient backgrounds.
  * Scoped to .h3vt-tour--theme-elegant
  *
  * @package H3VT_Tours
  */
 
 .h3vt-tour--theme-elegant {
-	font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+	font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
 }
 
+/* ---------- Header ---------- */
+
 .h3vt-tour--theme-elegant .h3vt-tour__header {
-	background: color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 92%, transparent);
+	background: linear-gradient(to bottom, color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 95%, transparent), color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 80%, transparent));
 }
+
+/* ---------- Slide content / title ---------- */
 
 .h3vt-tour--theme-elegant .h3vt-tour__slide-content {
 	top: 120px;
 	bottom: auto;
 	left: 40px;
+	background: rgba(0, 0, 0, 0.35);
+	padding: 16px 20px;
+	border-radius: 6px;
+	max-width: 420px;
 }
 
 .h3vt-tour--theme-elegant .h3vt-tour__slide-title {
 	font-style: italic;
 	font-weight: 400;
-	font-size: 2.8rem;
+	font-size: 1.3rem;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__slide-description {
+	font-size: 0.9rem;
 }
 
 .h3vt-tour--theme-elegant .h3vt-tour__slide-title::before {
@@ -33,20 +46,230 @@
 	width: 60px;
 	height: 3px;
 	background: var(--h3vt-text, #fff);
-	margin-bottom: 16px;
+	margin-bottom: 12px;
 }
 
-.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text {
-	background: var(--h3vt-button-bg, #ff6b00);
-	border-color: var(--h3vt-button-bg, #ff6b00);
-}
+/* ---------- Navigation buttons — hover uses button-bg color for icons ---------- */
 
 .h3vt-tour--theme-elegant .h3vt-tour__nav-button,
 .h3vt-tour--theme-elegant .h3vt-tour__dropdown-item {
 	font-family: inherit;
 }
 
-/* Mobile overrides */
+.h3vt-tour--theme-elegant .h3vt-tour__nav-button:hover,
+.h3vt-tour--theme-elegant .h3vt-tour__nav-button:focus-visible {
+	color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__nav-button:hover svg,
+.h3vt-tour--theme-elegant .h3vt-tour__nav-button:focus-visible svg {
+	stroke: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+}
+
+/* ---------- Bottom bar buttons — consistent size + gradient bg ---------- */
+
+.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text {
+	min-width: 130px;
+	padding: 10px 20px;
+	font-size: 13px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	border-radius: 6px;
+	background: linear-gradient(to bottom, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+	backdrop-filter: blur(4px);
+	text-align: center;
+	justify-content: center;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text:hover,
+.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text:focus-visible {
+	background: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	border-color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	color: #fff;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--icon {
+	min-width: 130px;
+	padding: 8px 12px;
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	border-radius: 6px;
+	background: linear-gradient(to bottom, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+	backdrop-filter: blur(4px);
+	text-align: center;
+	justify-content: center;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--icon:hover,
+.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--icon:focus-visible {
+	background: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	border-color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	transform: none;
+}
+
+/* ---------- Playback controls — icon color on hover ---------- */
+
+.h3vt-tour--theme-elegant .h3vt-tour__control:hover,
+.h3vt-tour--theme-elegant .h3vt-tour__control:focus-visible {
+	background: transparent;
+	color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	border-color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+}
+
+/* ---------- Contact modal — side-by-side layout like 3D Vista ---------- */
+
+.h3vt-tour--theme-elegant .h3vt-tour__modal--contact .h3vt-tour__modal-content {
+	width: 700px;
+	max-width: 95vw;
+	padding: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: row;
+	background: #fff;
+	color: #333;
+	border-radius: 8px;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__modal--contact .h3vt-tour__modal-close {
+	color: #333;
+	z-index: 5;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__modal--contact .h3vt-tour__modal-close:hover {
+	background: rgba(0, 0, 0, 0.08);
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__contact-info {
+	flex: 0 0 45%;
+	padding: 40px 32px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__contact-logo {
+	max-width: 180px;
+	margin: 0 auto 24px;
+	display: block;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__contact-name {
+	font-size: 1.3rem;
+	font-weight: 700;
+	margin-bottom: 12px;
+	color: #222;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__contact-address {
+	font-size: 1rem;
+	font-weight: 600;
+	opacity: 1;
+	color: #333;
+	margin-bottom: 16px;
+	line-height: 1.6;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__contact-email,
+.h3vt-tour--theme-elegant .h3vt-tour__contact-phone {
+	color: var(--h3vt-button-bg, #ff6b00);
+	font-size: 0.95rem;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__contact-map {
+	margin-top: 0;
+	border-radius: 0;
+	flex: 1;
+	min-height: 100%;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__contact-map iframe {
+	height: 100%;
+	min-height: 350px;
+}
+
+/* ---------- Testimonials modal — match 3D Vista style ---------- */
+
+.h3vt-tour--theme-elegant .h3vt-tour__modal--testimonials .h3vt-tour__modal-content {
+	width: 680px;
+	max-width: 95vw;
+	border-radius: 8px;
+	overflow: hidden;
+	background: #fff;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__modal--testimonials .h3vt-tour__modal-close {
+	background: var(--h3vt-header-bg, #1A1A1A);
+	color: #fff;
+	width: 32px;
+	height: 32px;
+	font-size: 22px;
+	border-radius: 4px;
+	top: 8px;
+	left: 8px;
+	right: auto;
+	z-index: 5;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__modal--testimonials .h3vt-tour__modal-close:hover {
+	background: color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 80%, #000);
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__testimonial-video {
+	background: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__testimonial-carousel {
+	background: color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 25%, transparent);
+	backdrop-filter: blur(8px);
+	padding: 16px 20px;
+	gap: 24px;
+	justify-content: center;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__testimonial-thumb {
+	background: none;
+	border: 2px solid transparent;
+	border-radius: 8px;
+	color: #fff;
+	min-width: 120px;
+	text-align: center;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__testimonial-thumb img {
+	width: 80px;
+	height: 80px;
+	border-radius: 6px;
+	object-fit: cover;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__testimonial-thumb:hover,
+.h3vt-tour--theme-elegant .h3vt-tour__testimonial-thumb:focus-visible {
+	border-color: rgba(255, 255, 255, 0.4);
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__testimonial-thumb--active {
+	border-color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__testimonial-name {
+	font-size: 12px;
+	font-weight: 600;
+	color: #fff;
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__testimonial-role {
+	font-size: 11px;
+	opacity: 0.8;
+	color: #fff;
+}
+
+/* ---------- Mobile overrides ---------- */
 
 @media (max-width: 767px) {
 
@@ -54,9 +277,36 @@
 		top: 80px;
 		left: 16px;
 		right: 16px;
+		padding: 12px 14px;
+		max-width: none;
 	}
 
 	.h3vt-tour--theme-elegant .h3vt-tour__slide-title {
-		font-size: 1.6rem;
+		font-size: 1.1rem;
+	}
+
+	.h3vt-tour--theme-elegant .h3vt-tour__slide-description {
+		font-size: 0.8rem;
+	}
+
+	.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text,
+	.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--icon {
+		min-width: 90px;
+		padding: 6px 10px;
+		font-size: 10px;
+	}
+
+	/* Contact modal stacks on mobile */
+	.h3vt-tour--theme-elegant .h3vt-tour__modal--contact .h3vt-tour__modal-content {
+		flex-direction: column;
+	}
+
+	.h3vt-tour--theme-elegant .h3vt-tour__contact-map iframe {
+		min-height: 200px;
+	}
+
+	.h3vt-tour--theme-elegant .h3vt-tour__testimonial-thumb img {
+		width: 60px;
+		height: 60px;
 	}
 }

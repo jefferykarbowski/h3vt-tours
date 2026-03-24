@@ -653,35 +653,37 @@ class H3VT_Tours_Renderer {
 			<div class="h3vt-tour__modal-content">
 				<button class="h3vt-tour__modal-close" aria-label="<?php esc_attr_e( 'Close', 'h3vt-tours' ); ?>">&times;</button>
 
-				<?php if ( ! empty( $logo ) && is_array( $logo ) ) : ?>
-					<img class="h3vt-tour__contact-logo"
-						src="<?php echo esc_url( $logo['url'] ); ?>"
-						alt="<?php echo esc_attr( $logo['alt'] ); ?>">
-				<?php endif; ?>
+				<div class="h3vt-tour__contact-info">
+					<?php if ( ! empty( $logo ) && is_array( $logo ) ) : ?>
+						<img class="h3vt-tour__contact-logo"
+							src="<?php echo esc_url( $logo['url'] ); ?>"
+							alt="<?php echo esc_attr( $logo['alt'] ); ?>">
+					<?php endif; ?>
 
-				<?php if ( $contact['contact_facility_name'] ) : ?>
-					<h3 class="h3vt-tour__contact-name"><?php echo esc_html( $contact['contact_facility_name'] ); ?></h3>
-				<?php endif; ?>
+					<?php if ( $contact['contact_facility_name'] ) : ?>
+						<h3 class="h3vt-tour__contact-name"><?php echo esc_html( $contact['contact_facility_name'] ); ?></h3>
+					<?php endif; ?>
 
-				<?php if ( $contact['contact_address'] ) : ?>
-					<p class="h3vt-tour__contact-address"><?php echo nl2br( esc_html( $contact['contact_address'] ) ); ?></p>
-				<?php endif; ?>
+					<?php if ( $contact['contact_address'] ) : ?>
+						<p class="h3vt-tour__contact-address"><?php echo nl2br( esc_html( $contact['contact_address'] ) ); ?></p>
+					<?php endif; ?>
 
-				<?php if ( $contact['contact_email'] ) : ?>
-					<p class="h3vt-tour__contact-email">
-						<a href="mailto:<?php echo esc_attr( $contact['contact_email'] ); ?>">
-							<?php echo esc_html( $contact['contact_email'] ); ?>
-						</a>
-					</p>
-				<?php endif; ?>
+					<?php if ( $contact['contact_email'] ) : ?>
+						<p class="h3vt-tour__contact-email">
+							<a href="mailto:<?php echo esc_attr( $contact['contact_email'] ); ?>">
+								<?php echo esc_html( $contact['contact_email'] ); ?>
+							</a>
+						</p>
+					<?php endif; ?>
 
-				<?php if ( $contact['contact_phone'] ) : ?>
-					<p class="h3vt-tour__contact-phone">
-						<a href="tel:<?php echo esc_attr( $contact['contact_phone'] ); ?>">
-							<?php echo esc_html( $contact['contact_phone'] ); ?>
-						</a>
-					</p>
-				<?php endif; ?>
+					<?php if ( $contact['contact_phone'] ) : ?>
+						<p class="h3vt-tour__contact-phone">
+							<a href="tel:<?php echo esc_attr( $contact['contact_phone'] ); ?>">
+								<?php echo esc_html( $contact['contact_phone'] ); ?>
+							</a>
+						</p>
+					<?php endif; ?>
+				</div>
 
 				<?php if ( $contact['google_maps_embed_url'] ) : ?>
 					<div class="h3vt-tour__contact-map">

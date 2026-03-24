@@ -917,6 +917,10 @@
 	padding: 40px;
 }
 
+.h3vt-tour__contact-info {
+	text-align: center;
+}
+
 .h3vt-tour__contact-logo {
 	max-width: 120px;
 	height: auto;
