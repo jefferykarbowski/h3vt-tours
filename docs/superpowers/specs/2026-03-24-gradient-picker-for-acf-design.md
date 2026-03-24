@@ -2,7 +2,7 @@
 
 ## Summary
 
-A WordPress plugin that adds a "Gradient" field type to Advanced Custom Fields (ACF 6+). Users visually build CSS gradients using an interactive gradient bar powered by Grapick, with WordPress's native `wp-color-picker` for individual color stops. The field stores a complete CSS gradient string ready for use in templates.
+A WordPress plugin that adds a "Gradient" field type to Advanced Custom Fields (ACF 6+). Users visually build CSS gradients using an interactive gradient bar powered by Grapick, with WordPress's native `wp-color-picker` (extended with `wp-color-picker-alpha` for opacity support) for individual color stops. The field stores a complete CSS gradient string ready for use in templates.
 
 ## Goals
 
@@ -18,27 +18,54 @@ A WordPress plugin that adds a "Gradient" field type to Advanced Custom Fields (
 - Repeating gradients
 - Gradient presets library
 - Frontend rendering helpers beyond `get_field()`
-- Gutenberg block integration
+- Gutenberg block integration (though fields will work in the Gutenberg sidebar via ACF's meta box)
 
 ## Technical Requirements
 
 - PHP 7.2+
 - WordPress 6.0+
 - ACF 6.0+ (free or PRO)
-- No external dependencies at runtime (Grapick bundled)
+- No external dependencies at runtime (Grapick and wp-color-picker-alpha bundled)
 - GPL-2.0+ license
 
 ## Architecture
 
 ### Plugin Bootstrap (`gradient-picker-for-acf.php`)
 
-Standard WordPress plugin header. On `acf/include_field_types` hook, loads and instantiates the field class. Defines constants for version, path, URL. Checks for ACF availability before loading.
+Standard WordPress plugin header with `Requires Plugins: advanced-custom-fields` (WP 6.5+ dependency signaling). Defines constants for version, path, URL. On `acf/include_field_types` hook, loads and registers the field class via `acf_register_field_type()`. If ACF is not active, displays an admin notice and returns early. Calls `load_plugin_textdomain()` for i18n.
 
 ```php
-// Hook into ACF field type registration
+/**
+ * Plugin Name: Gradient Picker for ACF
+ * Requires Plugins: advanced-custom-fields
+ * Text Domain: gradient-picker-for-acf
+ * License: GPL-2.0+
+ */
+
+define( 'GPFA_VERSION', '1.0.0' );
+define( 'GPFA_PATH', plugin_dir_path( __FILE__ ) );
+define( 'GPFA_URL', plugin_dir_url( __FILE__ ) );
+
+// Load text domain.
+add_action( 'init', function() {
+    load_plugin_textdomain( 'gradient-picker-for-acf', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+});
+
+// Register field type with ACF.
 add_action( 'acf/include_field_types', function() {
     require_once GPFA_PATH . 'includes/class-gpfa-field.php';
-    new GPFA_Field();
+    acf_register_field_type( 'GPFA_Field' );
+});
+
+// Admin notice if ACF is not active.
+add_action( 'admin_notices', function() {
+    if ( class_exists( 'ACF' ) ) {
+        return;
+    }
+    printf(
+        '<div class="notice notice-error"><p>%s</p></div>',
+        esc_html__( 'Gradient Picker for ACF requires Advanced Custom Fields 6.0 or later.', 'gradient-picker-for-acf' )
+    );
 });
 ```
 
@@ -51,6 +78,7 @@ Extends `acf_field`. Implements these methods:
 - `label`: `'Gradient'`
 - `category`: `'basic'`
 - `defaults`: `['default_value' => '', 'direction' => '90deg']`
+- `supports`: `['escaping_html' => true]` (ACF 6.2.5+ safe output)
 
 #### `render_field_settings( $field )`
 Admin UI for configuring the field instance:
@@ -86,23 +114,40 @@ Outputs the admin field HTML:
 ```
 
 #### `input_admin_enqueue_scripts()`
-Enqueues assets only on admin pages where the field is used:
+Enqueues assets only on admin pages where the field is used. All handles prefixed with `gpfa-`:
 - `wp-color-picker` (core WP script + style)
-- `grapick.min.js` + `grapick.min.css` from `assets/vendor/`
-- `gpfa-field.js` + `gpfa-field.css` from `assets/`
+- `gpfa-wp-color-picker-alpha` — bundled `wp-color-picker-alpha` shim for rgba/hsla support
+- `gpfa-grapick` + `gpfa-grapick-css` from `assets/vendor/`
+- `gpfa-field` + `gpfa-field-css` from `assets/`
 
 #### `update_value( $value, $post_id, $field )`
-Sanitizes and validates before save:
+Sanitizes and validates before save. The `$post_id` parameter may be a numeric post ID or a string like `"options"`, `"user_42"`, or `"term_5"` — the field handles all ACF storage contexts since it stores/returns a plain string.
+
 - `sanitize_text_field()` to strip tags/scripts
-- Regex validation: must match `linear-gradient(...)` pattern
-- Returns empty string if invalid
+- Regex validation against a strict whitelist pattern:
+
+```php
+$pattern = '/^linear-gradient\(\s*'
+    . '(to\s+(top|bottom|left|right)(\s+(top|bottom|left|right))?'
+    . '|\d{1,3}(\.\d+)?deg)'
+    . '\s*,'
+    . '(\s*(#[0-9a-fA-F]{3,8}'
+    . '|rgba?\(\s*[\d.\s,%]+\)'
+    . '|hsla?\(\s*[\d.\s,%]+\)'
+    . '|[a-z]+)'
+    . '\s+\d{1,3}(\.\d+)?%'
+    . '\s*,?)+'
+    . '\s*\)$/i';
+```
+
+- Returns empty string if invalid or if the value is empty (cleared field)
 
 #### `format_value( $value, $post_id, $field )`
 Returns the raw CSS string, escaped with `esc_attr()` for safe use in HTML attributes.
 
 ### JavaScript (`assets/js/gpfa-field.js`)
 
-Initializes the Grapick instance per field, wires up `wp-color-picker` for each stop handler, and syncs changes back to the hidden input.
+Initializes the Grapick instance per field, wires up `wp-color-picker` (with alpha shim) for each stop handler, and syncs changes back to the hidden input.
 
 ```javascript
 // Pseudocode for field initialization
@@ -114,12 +159,19 @@ function initGradientField(el) {
 
     const gp = new Grapick({ el: bar });
 
-    // Wire wp-color-picker into each stop
+    // Wire wp-color-picker (with alpha shim) into each stop
     gp.setColorPicker(handler => {
-        const wpPicker = createWpColorPicker(handler.getEl(), {
+        const $el = jQuery(handler.getEl());
+        const $input = jQuery('<input type="text">').val(handler.getColor()).appendTo($el);
+        $input.wpColorPicker({
             defaultColor: handler.getColor(),
-            change: (color) => handler.setColor(color),
-            allowAlpha: true,
+            change: function(event, ui) {
+                handler.setColor(ui.color.toString());
+            },
+            clear: function() {
+                handler.setColor('transparent');
+            },
+            palettes: true,
         });
     });
 
@@ -133,6 +185,12 @@ function initGradientField(el) {
 
     // Sync changes to hidden input
     function updateValue() {
+        // Prevent storing a gradient with no stops
+        if (gp.getHandlers().length === 0) {
+            input.value = '';
+            preview.textContent = '';
+            return;
+        }
         const direction = directionSelect.value;
         const value = 'linear-gradient(' + direction + ', ' + gp.getSafeValue() + ')';
         input.value = value;
@@ -146,19 +204,24 @@ function initGradientField(el) {
 }
 
 // Initialize on ACF ready and on repeater/flexible content row add
-acf.addAction('ready append', function() {
+acf.addAction('ready', initAll);
+acf.addAction('append', initAll);
+
+function initAll() {
     document.querySelectorAll('.gpfa-field:not(.gpfa-initialized)').forEach(el => {
         el.classList.add('gpfa-initialized');
         initGradientField(el);
     });
-});
+}
 ```
 
 Key behaviors:
-- Uses `acf.addAction('ready append', ...)` to handle fields inside repeaters/flexible content
+- Uses separate `acf.addAction('ready', ...)` and `acf.addAction('append', ...)` calls for reliable ACF 6.x compatibility
+- Handles repeaters, flexible content, clone fields, and Gutenberg sidebar meta boxes
 - Parses existing gradient values to restore stop positions and colors on page load
 - Custom angle input shown/hidden based on direction dropdown selection
-- Alpha channel support via `wp-color-picker`'s `allowAlpha` option
+- Alpha channel support via bundled `wp-color-picker-alpha` shim (core `wp-color-picker` does not natively support alpha)
+- Empty state: if all stops are removed, the hidden input is cleared to an empty string
 
 ### CSS (`assets/css/gpfa-field.css`)
 
@@ -247,34 +310,43 @@ gradient-picker-for-acf/
         vendor/
             grapick.min.js             # Grapick library (MIT, bundled)
             grapick.min.css            # Grapick styles (MIT, bundled)
+            wp-color-picker-alpha.min.js  # Alpha shim (GPL-2.0+, bundled)
+    languages/                         # i18n .pot/.po/.mo files
     readme.txt                         # WordPress.org readme
     LICENSE                            # GPL-2.0+
 ```
+
+Note: Bundled vendor files must include copyright/license header comments at the top of each file for WordPress.org compliance.
 
 ## Data Flow
 
 1. **Admin load**: ACF renders field -> `render_field()` outputs HTML -> JS initializes Grapick + wp-color-picker
 2. **User edits**: Drags stops / picks colors / changes direction -> JS updates hidden input with full CSS string
-3. **Save**: `update_value()` sanitizes and validates the CSS string -> stored in `wp_postmeta`
+3. **Save**: `update_value()` sanitizes and validates the CSS string -> stored in `wp_postmeta` (or options/termmeta/usermeta depending on ACF context)
 4. **Template**: `get_field('gradient')` returns `"linear-gradient(90deg, #ff6b00 0%, #1a1a1a 100%)"` via `format_value()`
 
 ## Validation & Security
 
-- `update_value()`: `sanitize_text_field()` + regex whitelist for `linear-gradient(...)` pattern
+- `update_value()`: `sanitize_text_field()` + strict regex whitelist for `linear-gradient(...)` pattern (see regex in update_value section above)
 - `format_value()`: `esc_attr()` for safe HTML attribute use
 - No raw user input echoed without escaping
-- Grapick bundled locally (no CDN/external requests)
+- Grapick and wp-color-picker-alpha bundled locally (no CDN/external requests)
 - `escaping_html` support flag set for ACF 6.2.5+
+- Empty/cleared fields store an empty string (no invalid partial values)
 
 ## WordPress.org Compliance
 
-- GPL-2.0+ license (Grapick MIT is compatible)
+- GPL-2.0+ license (Grapick MIT and wp-color-picker-alpha GPL-2.0+ are compatible)
+- `Requires Plugins: advanced-custom-fields` header for WP 6.5+ dependency signaling
 - No external API calls or tracking
 - No premium upsells or nag notices
-- All assets bundled locally
-- Internationalized with `gradient-picker-for-acf` text domain
+- All assets bundled locally with copyright/license headers in vendor files
+- Internationalized with `gradient-picker-for-acf` text domain and `load_plugin_textdomain()`
 - `readme.txt` follows WordPress.org format with description, installation, FAQ, changelog, screenshots
-- Tested up to latest WP and ACF versions
+- Tested up to: WordPress 6.7, ACF 6.3
+- Requires at least: WordPress 6.0
+- All enqueue handles prefixed with `gpfa-` to avoid collisions
+- No `uninstall.php` in v1 — field data is stored via ACF's standard postmeta mechanism and should persist if plugin is deactivated (standard ACF field behavior)
 
 ## Future Considerations (post-v1)
 
