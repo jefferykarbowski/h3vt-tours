@@ -162,17 +162,19 @@ class H3VT_Tours_ACF {
 			'fields'   => array(
 				array(
 					'key'           => 'field_h3vt_tpl_primary_color',
-					'label'         => 'Button Backgrounds',
+					'label'         => 'Button Background',
 					'name'          => 'primary_color',
-					'type'          => 'color_picker',
-					'default_value' => '#FF6B00',
+					'type'          => 'gradient',
+					'default_value' => 'linear-gradient(to bottom, #FF6B00 0%, #FF6B00 100%)',
+					'instructions'  => 'Gradient used for button backgrounds. The first color stop is also used as the solid accent color for hover states, borders, and links.',
 				),
 				array(
 					'key'           => 'field_h3vt_tpl_secondary_color',
 					'label'         => 'Header Background',
 					'name'          => 'secondary_color',
-					'type'          => 'color_picker',
-					'default_value' => '#1A1A1A',
+					'type'          => 'gradient',
+					'default_value' => 'linear-gradient(to bottom, #1A1A1A 0%, #1A1A1A 100%)',
+					'instructions'  => 'Gradient used for the header bar background. The first color stop is also used as a solid fallback color.',
 				),
 				array(
 					'key'           => 'field_h3vt_tpl_text_color',
@@ -189,23 +191,7 @@ class H3VT_Tours_ACF {
 					'default_value' => '',
 					'instructions'  => 'Color used for hover states on buttons and links. Defaults to Button Backgrounds color if empty.',
 				),
-				array(
-					'key'           => 'field_h3vt_tpl_button_gradient_color',
-					'label'         => 'Button Gradient Color',
-					'name'          => 'button_gradient_color',
-					'type'          => 'color_picker',
-					'default_value' => '',
-					'instructions'  => 'Optional second color for a gradient on buttons. When set, buttons use a gradient from Button Backgrounds to this color.',
-				),
-				array(
-					'key'           => 'field_h3vt_tpl_header_gradient_color',
-					'label'         => 'Header Gradient Color',
-					'name'          => 'header_gradient_color',
-					'type'          => 'color_picker',
-					'default_value' => '',
-					'instructions'  => 'Optional second color for a gradient on the header. When set, header uses a gradient from Header Background to this color.',
-				),
-				array(
+					array(
 					'key'           => 'field_h3vt_tpl_dropdown_hover_color',
 					'label'         => 'Dropdown Hover Color',
 					'name'          => 'dropdown_hover_color',

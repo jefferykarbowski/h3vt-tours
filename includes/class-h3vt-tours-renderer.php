@@ -44,12 +44,10 @@ class H3VT_Tours_Renderer {
 		}
 
 		if ( $use_template ) {
-			$primary_color          = get_field( 'primary_color', $template_id ) ?: '#FF6B00';
-			$secondary_color        = get_field( 'secondary_color', $template_id ) ?: '#1A1A1A';
+			$primary_color_raw      = get_field( 'primary_color', $template_id ) ?: '#FF6B00';
+			$secondary_color_raw    = get_field( 'secondary_color', $template_id ) ?: '#1A1A1A';
 			$text_color             = get_field( 'text_color', $template_id ) ?: '#FFFFFF';
 			$hover_color            = get_field( 'hover_color', $template_id ) ?: '';
-			$button_gradient_color  = get_field( 'button_gradient_color', $template_id ) ?: '';
-			$header_gradient_color  = get_field( 'header_gradient_color', $template_id ) ?: '';
 			$dropdown_hover_color   = get_field( 'dropdown_hover_color', $template_id ) ?: '';
 			$logo                   = get_field( 'logo', $template_id );
 			$icon                   = get_field( 'icon', $template_id );
@@ -68,12 +66,10 @@ class H3VT_Tours_Renderer {
 				'pinterest' => get_field( 'social_pinterest', $template_id ) ?: '',
 			);
 		} else {
-			$primary_color          = '#FF6B00';
-			$secondary_color        = '#1A1A1A';
+			$primary_color_raw      = '#FF6B00';
+			$secondary_color_raw    = '#1A1A1A';
 			$text_color             = '#FFFFFF';
 			$hover_color            = '';
-			$button_gradient_color  = '';
-			$header_gradient_color  = '';
 			$dropdown_hover_color   = '';
 			$logo                   = null;
 			$icon                   = null;
@@ -86,15 +82,49 @@ class H3VT_Tours_Renderer {
 		}
 
 		/*
+		 * Parse gradient fields — extract the first color stop as
+		 * a solid fallback for hover states, borders, links, etc.
+		 * The full gradient string is passed separately for backgrounds.
+		 */
+		$primary_gradient   = '';
+		$primary_color      = '#FF6B00';
+		$secondary_gradient = '';
+		$secondary_color    = '#1A1A1A';
+
+		if ( is_string( $primary_color_raw ) && 0 === strpos( $primary_color_raw, 'linear-gradient' ) ) {
+			$primary_gradient = $primary_color_raw;
+			if ( function_exists( 'gpfa_parse_gradient' ) ) {
+				$parsed = gpfa_parse_gradient( $primary_color_raw );
+				if ( $parsed && ! empty( $parsed['stops'][0]['color'] ) ) {
+					$primary_color = $parsed['stops'][0]['color'];
+				}
+			}
+		} elseif ( $primary_color_raw ) {
+			$primary_color = $primary_color_raw;
+		}
+
+		if ( is_string( $secondary_color_raw ) && 0 === strpos( $secondary_color_raw, 'linear-gradient' ) ) {
+			$secondary_gradient = $secondary_color_raw;
+			if ( function_exists( 'gpfa_parse_gradient' ) ) {
+				$parsed = gpfa_parse_gradient( $secondary_color_raw );
+				if ( $parsed && ! empty( $parsed['stops'][0]['color'] ) ) {
+					$secondary_color = $parsed['stops'][0]['color'];
+				}
+			}
+		} elseif ( $secondary_color_raw ) {
+			$secondary_color = $secondary_color_raw;
+		}
+
+		/*
 		 * Settings.
 		 */
 		$settings = array(
 			'primary_color'          => $primary_color,
+			'primary_gradient'       => $primary_gradient,
 			'secondary_color'        => $secondary_color,
+			'secondary_gradient'     => $secondary_gradient,
 			'text_color'             => $text_color,
 			'hover_color'            => $hover_color,
-			'button_gradient_color'  => $button_gradient_color,
-			'header_gradient_color'  => $header_gradient_color,
 			'dropdown_hover_color'   => $dropdown_hover_color,
 			'logo'                   => $logo,
 			'icon'             => $icon,
@@ -266,11 +296,11 @@ class H3VT_Tours_Renderer {
 		$data = self::get_tour_data( $post_id );
 
 		$button_bg       = esc_attr( $data['settings']['primary_color'] );
+		$btn_gradient    = esc_attr( $data['settings']['primary_gradient'] );
 		$header_bg       = esc_attr( $data['settings']['secondary_color'] );
+		$hdr_gradient    = esc_attr( $data['settings']['secondary_gradient'] );
 		$text            = esc_attr( $data['settings']['text_color'] );
 		$hover           = esc_attr( $data['settings']['hover_color'] );
-		$btn_gradient    = esc_attr( $data['settings']['button_gradient_color'] );
-		$hdr_gradient    = esc_attr( $data['settings']['header_gradient_color'] );
 		$dropdown_hover  = esc_attr( $data['settings']['dropdown_hover_color'] );
 		$speed_ms        = absint( $data['settings']['autoplay_speed'] ) * 1000;
 
@@ -279,10 +309,10 @@ class H3VT_Tours_Renderer {
 			$extra_css .= ';--h3vt-hover:' . $hover;
 		}
 		if ( $btn_gradient ) {
-			$extra_css .= ';--h3vt-button-gradient:' . $btn_gradient;
+			$extra_css .= ';--h3vt-button-bg-gradient:' . $btn_gradient;
 		}
 		if ( $hdr_gradient ) {
-			$extra_css .= ';--h3vt-header-gradient:' . $hdr_gradient;
+			$extra_css .= ';--h3vt-header-bg-gradient:' . $hdr_gradient;
 		}
 		if ( $dropdown_hover ) {
 			$extra_css .= ';--h3vt-dropdown-hover:' . $dropdown_hover;

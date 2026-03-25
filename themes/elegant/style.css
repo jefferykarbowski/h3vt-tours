@@ -15,7 +15,7 @@
 /* ---------- Header ---------- */
 
 .h3vt-tour--theme-elegant .h3vt-tour__header {
-	background: linear-gradient(to bottom, var(--h3vt-header-bg, #1A1A1A), var(--h3vt-header-gradient, var(--h3vt-header-bg, #1A1A1A)));
+	background: var(--h3vt-header-bg-gradient, var(--h3vt-header-bg, #1A1A1A));
 }
 
 /* ---------- Slide content / title ---------- */
@@ -77,7 +77,7 @@
 	letter-spacing: 0.5px;
 	border: 2px solid var(--h3vt-button-bg, #ff6b00);
 	border-radius: 6px;
-	background: linear-gradient(to bottom, var(--h3vt-button-bg, #ff6b00), var(--h3vt-button-gradient, var(--h3vt-button-bg, #ff6b00)));
+	background: var(--h3vt-button-bg-gradient, var(--h3vt-button-bg, #ff6b00));
 	color: var(--h3vt-text, #fff);
 	text-align: center;
 	justify-content: center;
@@ -95,7 +95,7 @@
 	padding: 8px 12px;
 	border: 2px solid var(--h3vt-button-bg, #ff6b00);
 	border-radius: 6px;
-	background: linear-gradient(to bottom, var(--h3vt-button-bg, #ff6b00), var(--h3vt-button-gradient, var(--h3vt-button-bg, #ff6b00)));
+	background: var(--h3vt-button-bg-gradient, var(--h3vt-button-bg, #ff6b00));
 	color: var(--h3vt-text, #fff);
 	text-align: center;
 	justify-content: center;
