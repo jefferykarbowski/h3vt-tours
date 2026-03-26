@@ -49,6 +49,7 @@ class H3VT_Tours_Renderer {
 			$text_color             = get_field( 'text_color', $template_id ) ?: '#FFFFFF';
 			$hover_color            = get_field( 'hover_color', $template_id ) ?: '';
 			$dropdown_hover_color   = get_field( 'dropdown_hover_color', $template_id ) ?: '';
+			$nav_control_hover      = get_field( 'nav_control_hover_color', $template_id ) ?: '';
 			$logo                   = get_field( 'logo', $template_id );
 			$icon                   = get_field( 'icon', $template_id );
 			$button_style           = get_field( 'button_style', $template_id ) ?: 'text';
@@ -71,6 +72,7 @@ class H3VT_Tours_Renderer {
 			$text_color             = '#FFFFFF';
 			$hover_color            = '';
 			$dropdown_hover_color   = '';
+			$nav_control_hover      = '';
 			$logo                   = null;
 			$icon                   = null;
 			$button_style           = 'text';
@@ -126,6 +128,7 @@ class H3VT_Tours_Renderer {
 			'text_color'             => $text_color,
 			'hover_color'            => $hover_color,
 			'dropdown_hover_color'   => $dropdown_hover_color,
+			'nav_control_hover'      => $nav_control_hover,
 			'logo'                   => $logo,
 			'icon'             => $icon,
 			'hero_image'       => get_field( 'hero_image', $post_id ),
@@ -302,6 +305,7 @@ class H3VT_Tours_Renderer {
 		$text            = esc_attr( $data['settings']['text_color'] );
 		$hover           = esc_attr( $data['settings']['hover_color'] );
 		$dropdown_hover  = esc_attr( $data['settings']['dropdown_hover_color'] );
+		$nav_ctrl_hover  = esc_attr( $data['settings']['nav_control_hover'] );
 		$speed_ms        = absint( $data['settings']['autoplay_speed'] ) * 1000;
 
 		$extra_css = '';
@@ -316,6 +320,9 @@ class H3VT_Tours_Renderer {
 		}
 		if ( $dropdown_hover ) {
 			$extra_css .= ';--h3vt-dropdown-hover:' . $dropdown_hover;
+		}
+		if ( $nav_ctrl_hover ) {
+			$extra_css .= ';--h3vt-nav-control-hover:' . $nav_ctrl_hover;
 		}
 
 		$theme       = $data['settings']['theme'];

@@ -200,6 +200,14 @@ class H3VT_Tours_ACF {
 					'instructions'  => 'Hover color for navigation dropdown items. Defaults to Hover Color if empty.',
 				),
 				array(
+					'key'           => 'field_h3vt_tpl_nav_control_hover_color',
+					'label'         => 'Navigation Control Hover Color',
+					'name'          => 'nav_control_hover_color',
+					'type'          => 'color_picker',
+					'default_value' => '',
+					'instructions'  => 'Hover color for playback controls (prev, next, play, home). Defaults to Hover Color if empty.',
+				),
+				array(
 					'key'           => 'field_h3vt_tpl_pdf_file',
 					'label'         => 'PDF File',
 					'name'          => 'pdf_file',

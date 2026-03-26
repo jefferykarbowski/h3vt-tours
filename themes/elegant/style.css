@@ -49,21 +49,44 @@
 	margin-bottom: 12px;
 }
 
-/* ---------- Navigation buttons — hover uses button-bg color for icons ---------- */
+/* ---------- Navigation menu — animated underline on hover, no color change ---------- */
 
 .h3vt-tour--theme-elegant .h3vt-tour__nav-button,
 .h3vt-tour--theme-elegant .h3vt-tour__dropdown-item {
 	font-family: inherit;
 }
 
+.h3vt-tour--theme-elegant .h3vt-tour__nav-button {
+	position: relative;
+	color: var(--h3vt-text, #fff);
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__nav-button::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 16px;
+	right: 16px;
+	height: 2px;
+	background: var(--h3vt-text, #fff);
+	transform: scaleX(0);
+	transform-origin: center;
+	transition: transform 0.3s ease;
+}
+
 .h3vt-tour--theme-elegant .h3vt-tour__nav-button:hover,
 .h3vt-tour--theme-elegant .h3vt-tour__nav-button:focus-visible {
-	color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	color: var(--h3vt-text, #fff);
+}
+
+.h3vt-tour--theme-elegant .h3vt-tour__nav-button:hover::after,
+.h3vt-tour--theme-elegant .h3vt-tour__nav-button:focus-visible::after {
+	transform: scaleX(1);
 }
 
 .h3vt-tour--theme-elegant .h3vt-tour__nav-button:hover svg,
 .h3vt-tour--theme-elegant .h3vt-tour__nav-button:focus-visible svg {
-	stroke: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	stroke: var(--h3vt-text, #fff);
 }
 
 /* ---------- Bottom bar buttons — consistent size, filled with button-bg ---------- */
@@ -108,13 +131,13 @@
 	transform: none;
 }
 
-/* ---------- Playback controls — icon color on hover ---------- */
+/* ---------- Playback controls — uses dedicated nav-control-hover color ---------- */
 
 .h3vt-tour--theme-elegant .h3vt-tour__control:hover,
 .h3vt-tour--theme-elegant .h3vt-tour__control:focus-visible {
 	background: transparent;
-	color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
-	border-color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	color: var(--h3vt-nav-control-hover, var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00)));
+	border-color: var(--h3vt-nav-control-hover, var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00)));
 }
 
 /* ---------- Dropdown hover — uses dedicated dropdown-hover var ---------- */
