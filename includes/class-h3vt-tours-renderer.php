@@ -95,24 +95,14 @@ class H3VT_Tours_Renderer {
 
 		if ( is_string( $primary_color_raw ) && 0 === strpos( $primary_color_raw, 'linear-gradient' ) ) {
 			$primary_gradient = $primary_color_raw;
-			if ( function_exists( 'gpfa_parse_gradient' ) ) {
-				$parsed = gpfa_parse_gradient( $primary_color_raw );
-				if ( $parsed && ! empty( $parsed['stops'][0]['color'] ) ) {
-					$primary_color = $parsed['stops'][0]['color'];
-				}
-			}
+			$primary_color    = self::extract_first_gradient_color( $primary_color_raw );
 		} elseif ( $primary_color_raw ) {
 			$primary_color = $primary_color_raw;
 		}
 
 		if ( is_string( $secondary_color_raw ) && 0 === strpos( $secondary_color_raw, 'linear-gradient' ) ) {
 			$secondary_gradient = $secondary_color_raw;
-			if ( function_exists( 'gpfa_parse_gradient' ) ) {
-				$parsed = gpfa_parse_gradient( $secondary_color_raw );
-				if ( $parsed && ! empty( $parsed['stops'][0]['color'] ) ) {
-					$secondary_color = $parsed['stops'][0]['color'];
-				}
-			}
+			$secondary_color    = self::extract_first_gradient_color( $secondary_color_raw );
 		} elseif ( $secondary_color_raw ) {
 			$secondary_color = $secondary_color_raw;
 		}
@@ -898,5 +888,64 @@ class H3VT_Tours_Renderer {
 			<?php endforeach; ?>
 		</div>
 		<?php
+	}
+
+	/* ------------------------------------------------------------------
+	 * Helpers
+	 * ----------------------------------------------------------------*/
+
+	/**
+	 * Extract the first color stop from a CSS gradient string.
+	 *
+	 * Handles hex, rgb(), rgba(), hsl(), hsla() and named colors.
+	 * Returns the original fallback default if parsing fails.
+	 *
+	 * @param string $gradient CSS gradient value.
+	 * @return string First color or fallback.
+	 */
+	private static function extract_first_gradient_color( $gradient ) {
+		$fallback = '#FF6B00';
+
+		// Strip outer linear-gradient(...).
+		if ( ! preg_match( '/^linear-gradient\((.+)\)$/is', trim( $gradient ), $outer ) ) {
+			return $fallback;
+		}
+
+		$inner = $outer[1];
+
+		// Split by top-level commas (skip commas inside parentheses).
+		$parts   = array();
+		$buf     = '';
+		$depth   = 0;
+
+		for ( $i = 0, $len = strlen( $inner ); $i < $len; $i++ ) {
+			$ch = $inner[ $i ];
+			if ( '(' === $ch ) {
+				$depth++;
+			} elseif ( ')' === $ch ) {
+				$depth--;
+			}
+			if ( ',' === $ch && 0 === $depth ) {
+				$parts[] = trim( $buf );
+				$buf     = '';
+				continue;
+			}
+			$buf .= $ch;
+		}
+		if ( '' !== trim( $buf ) ) {
+			$parts[] = trim( $buf );
+		}
+
+		// Skip direction if present (first part starts with "to " or ends with "deg").
+		$first = isset( $parts[0] ) ? $parts[0] : '';
+		if ( preg_match( '/^(to\s|[\d.]+deg$)/i', $first ) ) {
+			array_shift( $parts );
+		}
+
+		// First color stop — strip trailing position (e.g. " 0%").
+		$stop = isset( $parts[0] ) ? $parts[0] : '';
+		$stop = preg_replace( '/\s+[\d.]+%?\s*$/', '', trim( $stop ) );
+
+		return $stop ? $stop : $fallback;
 	}
 }
