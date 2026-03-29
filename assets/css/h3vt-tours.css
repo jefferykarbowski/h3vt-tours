@@ -1424,6 +1424,77 @@
 }
 
 /* ==========================================================================
+   17.6. Responsive - Landscape Phones with wide viewports (e.g. Pixel 9 Pro)
+   Targets devices where viewport height is short but width exceeds 767px,
+   so the normal mobile breakpoint does NOT apply.
+   ========================================================================== */
+
+@media (max-height: 500px) and (orientation: landscape) and (min-width: 768px) {
+
+	/* Dropdown: cap height to viewport and allow scrolling.
+	   The desktop dropdown uses position:absolute inside .h3vt-tour which
+	   has overflow:hidden — so long lists get clipped. */
+	.h3vt-tour__dropdown {
+		max-height: calc(100dvh - 120px);
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	/* Compact the header */
+	.h3vt-tour__header {
+		padding: 6px 12px;
+	}
+
+	.h3vt-tour__logo img {
+		max-height: 40px;
+	}
+
+	.h3vt-tour__nav-button {
+		font-size: 11px;
+		padding: 4px 8px;
+	}
+
+	/* Bottom bar — reduce padding and gap */
+	.h3vt-tour__bottom-bar {
+		padding: 4px 10px;
+		gap: 4px;
+	}
+
+	.h3vt-tour__bottom-btn--text {
+		padding: 4px 8px;
+		font-size: 9px;
+		letter-spacing: 0;
+		border-width: 1px;
+		min-width: auto;
+	}
+
+	.h3vt-tour__bottom-btn--icon {
+		padding: 2px 6px;
+		gap: 1px;
+	}
+
+	.h3vt-tour__bottom-btn--icon img {
+		width: 20px;
+		height: 20px;
+	}
+
+	.h3vt-tour__bottom-btn--icon span {
+		font-size: 8px;
+	}
+
+	/* Smaller playback controls */
+	.h3vt-tour__control {
+		width: 28px;
+		height: 28px;
+	}
+
+	.h3vt-tour__control svg {
+		width: 11px;
+		height: 11px;
+	}
+}
+
+/* ==========================================================================
    18. Reduced Motion
    ========================================================================== */
 

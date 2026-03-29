@@ -370,3 +370,18 @@
 		border-width: 1px;
 	}
 }
+
+/* ---------- Landscape phones with wide viewports (e.g. Pixel 9 Pro: 892px wide) ---------- */
+
+@media (max-height: 500px) and (orientation: landscape) and (min-width: 768px) {
+
+	.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text,
+	.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--icon {
+		min-width: 50px;
+		padding: 3px 7px;
+		font-size: 9px;
+		letter-spacing: 0;
+		border-width: 1px;
+		border-radius: 4px;
+	}
+}
