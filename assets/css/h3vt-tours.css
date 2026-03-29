@@ -1375,6 +1375,50 @@
 }
 
 /* ==========================================================================
+   17.5. Responsive - Landscape Mobile
+   ========================================================================== */
+
+@media (max-width: 767px) and (orientation: landscape) {
+
+	/* Scrollable nav panel — prevents long dropdown lists from being clipped
+	   when the viewport height is short in landscape orientation */
+	.h3vt-tour__header--menu-open .h3vt-tour__nav {
+		max-height: calc(100svh - 56px);
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	/* Bottom bar — single row in landscape to conserve vertical space */
+	.h3vt-tour__bottom-bar {
+		flex-wrap: nowrap;
+		padding: 6px 12px;
+		gap: 4px;
+	}
+
+	/* Undo the "controls span full width / stack on top" mobile override */
+	.h3vt-tour__controls {
+		order: 0;
+		flex-basis: auto;
+		gap: 3px;
+	}
+
+	.h3vt-tour__bottom-left {
+		justify-content: flex-start;
+	}
+
+	/* Smaller playback circles to save room */
+	.h3vt-tour__control {
+		width: 28px;
+		height: 28px;
+	}
+
+	.h3vt-tour__control svg {
+		width: 11px;
+		height: 11px;
+	}
+}
+
+/* ==========================================================================
    18. Reduced Motion
    ========================================================================== */
 

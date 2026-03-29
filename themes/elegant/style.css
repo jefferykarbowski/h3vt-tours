@@ -355,3 +355,18 @@
 		height: 60px;
 	}
 }
+
+/* ---------- Landscape mobile overrides ---------- */
+
+@media (max-width: 767px) and (orientation: landscape) {
+
+	/* Shrink buttons further so they fit in a single row without wrapping */
+	.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text,
+	.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--icon {
+		min-width: 50px;
+		padding: 3px 7px;
+		font-size: 9px;
+		letter-spacing: 0;
+		border-width: 1px;
+	}
+}
