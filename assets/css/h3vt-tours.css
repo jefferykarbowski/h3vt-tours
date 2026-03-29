@@ -1380,10 +1380,15 @@
 
 @media (max-width: 767px) and (orientation: landscape) {
 
-	/* Scrollable nav panel — prevents long dropdown lists from being clipped
-	   when the viewport height is short in landscape orientation */
+	/* Nav panel: use position:fixed so it escapes the overflow:hidden clipping
+	   context on .h3vt-tour. The portrait mobile block sets position:absolute
+	   which clips against the tour container; fixed renders relative to the
+	   viewport instead, allowing the full list to scroll into view. */
 	.h3vt-tour__header--menu-open .h3vt-tour__nav {
-		max-height: calc(100svh - 56px);
+		position: fixed;
+		top: 64px; /* approximate header height: 24px padding + ~40px content */
+		z-index: 200;
+		max-height: calc(100dvh - 64px);
 		overflow-y: auto;
 		-webkit-overflow-scrolling: touch;
 	}
