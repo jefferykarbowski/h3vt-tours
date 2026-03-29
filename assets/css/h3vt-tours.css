@@ -1375,7 +1375,68 @@
 }
 
 /* ==========================================================================
-   18. Reduced Motion
+   18. Responsive - Landscape Phone (max-height: 500px + orientation: landscape)
+   ========================================================================== */
+
+@media (max-height: 500px) and (orientation: landscape) {
+
+	/*
+	 * Dropdowns: switch to position:fixed so they escape the
+	 * overflow:hidden clipping boundary on .h3vt-tour.
+	 * top: 52px ≈ header padding (12px) + nav-button height (~28px) + padding (12px).
+	 */
+	.h3vt-tour__dropdown {
+		position: fixed;
+		top: 52px;
+		max-height: calc(100vh - 60px);
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+		z-index: 300;
+	}
+
+	/* Compact bottom bar — reduce padding and button sizing for limited height */
+	.h3vt-tour__bottom-bar {
+		padding: 5px 12px;
+		gap: 4px;
+	}
+
+	.h3vt-tour__bottom-btn--text {
+		padding: 4px 8px;
+		font-size: 10px;
+		min-width: auto;
+		letter-spacing: 0.2px;
+		border-width: 1.5px;
+		border-radius: 5px;
+	}
+
+	.h3vt-tour__bottom-btn--icon {
+		padding: 3px 6px;
+		min-width: auto;
+	}
+
+	.h3vt-tour__bottom-btn--icon img {
+		width: 20px;
+		height: 20px;
+	}
+
+	.h3vt-tour__bottom-btn--icon span {
+		font-size: 9px;
+	}
+
+	.h3vt-tour__control {
+		width: 30px;
+		height: 30px;
+	}
+
+	.h3vt-tour__control svg {
+		width: 13px;
+		height: 13px;
+	}
+
+}
+
+/* ==========================================================================
+   19. Reduced Motion
    ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1403,7 +1464,7 @@
 }
 
 /* ==========================================================================
-   19. Print Styles
+   20. Print Styles
    ========================================================================== */
 
 @media print {

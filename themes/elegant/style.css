@@ -313,6 +313,20 @@
 	color: #fff;
 }
 
+/* ---------- Landscape phone overrides ---------- */
+
+@media (max-height: 500px) and (orientation: landscape) {
+
+	.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--text,
+	.h3vt-tour--theme-elegant .h3vt-tour__bottom-btn--icon {
+		min-width: auto;
+		padding: 4px 8px;
+		font-size: 10px;
+		border-width: 1.5px;
+	}
+
+}
+
 /* ---------- Mobile overrides ---------- */
 
 @media (max-width: 767px) {
