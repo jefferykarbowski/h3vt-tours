@@ -3,7 +3,7 @@
  * Plugin Name: H3VT Tours Embed
  * Plugin URI:  https://h3vt.com
  * Description: Embed virtual tours from an H3VT Tours host site using shortcodes.
- * Version:     1.0.1
+ * Version:     1.4.1
  * Author:      H3VT
  * Author URI:  https://h3vt.com
  * License:     GPL-2.0+
@@ -28,7 +28,7 @@ if ( version_compare( PHP_VERSION, '7.2', '<' ) ) {
 	return;
 }
 
-define( 'H3VT_EMBED_VERSION', '1.0.1' );
+define( 'H3VT_EMBED_VERSION', '1.4.1' );
 define( 'H3VT_EMBED_PATH', plugin_dir_path( __FILE__ ) );
 
 require_once H3VT_EMBED_PATH . 'includes/class-h3vt-embed-settings.php';
@@ -40,3 +40,17 @@ add_action( 'plugins_loaded', function () {
 	}
 	new H3VT_Embed_Shortcode();
 } );
+
+/**
+ * Plugin Update Checker — uses GitHub releases with .zip assets.
+ */
+require H3VT_EMBED_PATH . 'plugin-update-checker/plugin-update-checker.php';
+
+$h3vtEmbedUpdateChecker = YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+	'https://github.com/jefferykarbowski/h3vt-tours/',
+	__FILE__,
+	'h3vt-tours-embed'
+);
+
+// Use GitHub releases for update detection (requires tagged releases with .zip assets).
+$h3vtEmbedUpdateChecker->getVcsApi()->enableReleaseAssets( '/^h3vt-tours-embed\.zip$/' );
