@@ -29,6 +29,20 @@ class H3VT_Embed_Shortcode {
 	private $js_enqueued = false;
 
 	/**
+	 * Track theme-specific CSS handles already enqueued.
+	 *
+	 * @var array
+	 */
+	private $theme_css_enqueued = array();
+
+	/**
+	 * Track theme-specific JS handles already enqueued.
+	 *
+	 * @var array
+	 */
+	private $theme_js_enqueued = array();
+
+	/**
 	 * Constructor — registers the shortcode.
 	 */
 	public function __construct() {
@@ -177,6 +191,22 @@ class H3VT_Embed_Shortcode {
 		if ( ! $this->js_enqueued && ! empty( $data['js_url'] ) ) {
 			wp_enqueue_script( 'h3vt-tours-embed', $data['js_url'], array(), H3VT_EMBED_VERSION, true );
 			$this->js_enqueued = true;
+		}
+
+		if ( ! empty( $data['theme_css_url'] ) ) {
+			$handle = 'h3vt-tours-embed-theme-' . md5( $data['theme_css_url'] );
+			if ( ! isset( $this->theme_css_enqueued[ $handle ] ) ) {
+				wp_enqueue_style( $handle, $data['theme_css_url'], array( 'h3vt-tours-embed' ), H3VT_EMBED_VERSION );
+				$this->theme_css_enqueued[ $handle ] = true;
+			}
+		}
+
+		if ( ! empty( $data['theme_js_url'] ) ) {
+			$handle = 'h3vt-tours-embed-theme-' . md5( $data['theme_js_url'] );
+			if ( ! isset( $this->theme_js_enqueued[ $handle ] ) ) {
+				wp_enqueue_script( $handle, $data['theme_js_url'], array( 'h3vt-tours-embed' ), H3VT_EMBED_VERSION, true );
+				$this->theme_js_enqueued[ $handle ] = true;
+			}
 		}
 	}
 
