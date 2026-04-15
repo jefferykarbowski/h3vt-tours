@@ -3,7 +3,7 @@
  * Plugin Name: H3VT Tours Embed
  * Plugin URI:  https://h3vt.com
  * Description: Embed virtual tours from an H3VT Tours host site using shortcodes.
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author:      H3VT
  * Author URI:  https://h3vt.com
  * License:     GPL-2.0+
@@ -28,7 +28,7 @@ if ( version_compare( PHP_VERSION, '7.2', '<' ) ) {
 	return;
 }
 
-define( 'H3VT_EMBED_VERSION', '1.0.0' );
+define( 'H3VT_EMBED_VERSION', '1.0.1' );
 define( 'H3VT_EMBED_PATH', plugin_dir_path( __FILE__ ) );
 
 require_once H3VT_EMBED_PATH . 'includes/class-h3vt-embed-settings.php';
