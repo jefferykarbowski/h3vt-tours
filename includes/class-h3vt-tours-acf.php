@@ -189,7 +189,8 @@ class H3VT_Tours_ACF {
 					'name'         => 'tour_address',
 					'type'         => 'textarea',
 					'rows'         => 3,
-					'new_lines'    => 'br',
+					// Renderer escapes then nl2br()s — leave raw newlines in the value.
+					'new_lines'    => '',
 					'instructions' => 'Multi-line address shown in the header next to the logo.',
 				),
 			),
