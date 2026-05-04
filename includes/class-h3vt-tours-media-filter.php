@@ -36,15 +36,23 @@ class H3VT_Tours_Media_Filter {
 	/**
 	 * Exclude tour-flagged attachments from the Media Library grid.
 	 *
-	 * Fires on the AJAX query that populates the media modal and the
-	 * admin Media Library list. Adds a meta_query that excludes any
-	 * attachment with _h3vt_tour_media meta. These attachments remain
-	 * accessible by ID (ACF image fields work normally).
+	 * Fires on the AJAX query that populates the media modal. Adds a
+	 * meta_query that excludes any attachment with _h3vt_tour_media meta
+	 * so the global library stays uncluttered.
+	 *
+	 * Skipped when the modal is opened from a tour or template edit
+	 * screen — editors need to see (and reuse / edit) media that's
+	 * already been uploaded for tours. Detected via the AJAX request's
+	 * post_id, then via the HTTP referer as a fallback.
 	 *
 	 * @param array $query WP_Query args for the attachment query.
 	 * @return array Modified query args.
 	 */
 	public function hide_tour_media( $query ) {
+		if ( $this->is_tour_edit_context() ) {
+			return $query;
+		}
+
 		$meta_query = isset( $query['meta_query'] ) ? $query['meta_query'] : array();
 
 		$meta_query[] = array(
@@ -55,6 +63,43 @@ class H3VT_Tours_Media_Filter {
 		$query['meta_query'] = $meta_query;
 
 		return $query;
+	}
+
+	/**
+	 * Detect whether the current request is being made from a tour or
+	 * template edit screen (the media modal opens from there).
+	 *
+	 * @return bool
+	 */
+	private function is_tour_edit_context() {
+		$tour_types = array( 'h3vt_tour', 'h3vt_tour_template' );
+		$post_id    = 0;
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_REQUEST['post_id'] ) ) {
+			$post_id = absint( $_REQUEST['post_id'] );
+		}
+
+		if ( ! $post_id && ! empty( $_SERVER['HTTP_REFERER'] ) ) {
+			$referer = wp_parse_url( wp_unslash( $_SERVER['HTTP_REFERER'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			if ( ! empty( $referer['query'] ) ) {
+				$args = array();
+				parse_str( $referer['query'], $args );
+
+				if ( ! empty( $args['post'] ) ) {
+					$post_id = absint( $args['post'] );
+				} elseif ( ! empty( $args['post_type'] ) && in_array( $args['post_type'], $tour_types, true ) ) {
+					// post-new.php?post_type=h3vt_tour — no auto-draft ID yet, but it's still tour context.
+					return true;
+				}
+			}
+		}
+
+		if ( ! $post_id ) {
+			return false;
+		}
+
+		return in_array( get_post_type( $post_id ), $tour_types, true );
 	}
 
 	/**
