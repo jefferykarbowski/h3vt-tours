@@ -22,6 +22,51 @@ class H3VT_Tours_ACF {
 		add_filter( 'acf/load_field/name=slide_nav_category', array( $this, 'populate_nav_categories' ) );
 		add_filter( 'acf/load_field/name=slide_floorplan', array( $this, 'populate_floorplan_choices' ) );
 		add_filter( 'acf/load_field/name=theme', array( $this, 'populate_theme_choices' ) );
+		add_action( 'wp_insert_post', array( $this, 'set_default_nav_categories' ), 10, 3 );
+	}
+
+	/**
+	 * Default navigation categories applied to every new tour.
+	 *
+	 * @return array
+	 */
+	public static function get_default_nav_categories() {
+		return array(
+			array( 'nav_label' => 'ACTIVITY ROOMS',     'nav_order' => 10 ),
+			array( 'nav_label' => 'COMMON AREAS',       'nav_order' => 20 ),
+			array( 'nav_label' => 'DINING / LIVING AREA', 'nav_order' => 30 ),
+			array( 'nav_label' => 'OUTDOOR AREAS',      'nav_order' => 40 ),
+			array( 'nav_label' => 'RESIDENT ROOMS',     'nav_order' => 50 ),
+		);
+	}
+
+	/**
+	 * Seed the nav_categories repeater with the standard defaults the first
+	 * time an h3vt_tour post is created (auto-draft) so editors see the
+	 * standard set without having to type them in manually.
+	 *
+	 * @param int     $post_id Post ID.
+	 * @param WP_Post $post    Post object.
+	 * @param bool    $update  True when updating an existing post.
+	 */
+	public function set_default_nav_categories( $post_id, $post, $update ) {
+		if ( $update ) {
+			return;
+		}
+		if ( 'h3vt_tour' !== $post->post_type ) {
+			return;
+		}
+		if ( ! function_exists( 'update_field' ) || ! function_exists( 'get_field' ) ) {
+			return;
+		}
+
+		// Only seed when nothing has been saved yet.
+		$existing = get_field( 'nav_categories', $post_id );
+		if ( ! empty( $existing ) ) {
+			return;
+		}
+
+		update_field( 'nav_categories', self::get_default_nav_categories(), $post_id );
 	}
 
 	/**
@@ -137,6 +182,15 @@ class H3VT_Tours_ACF {
 					'name'  => 'hero_description',
 					'type'  => 'textarea',
 					'rows'  => 3,
+				),
+				array(
+					'key'          => 'field_h3vt_settings_tour_address',
+					'label'        => 'Address',
+					'name'         => 'tour_address',
+					'type'         => 'textarea',
+					'rows'         => 3,
+					'new_lines'    => 'br',
+					'instructions' => 'Multi-line address shown in the header next to the logo.',
 				),
 			),
 			'location' => array(

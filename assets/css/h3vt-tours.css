@@ -79,6 +79,16 @@
 	display: block;
 }
 
+.h3vt-tour__address {
+	margin-left: 16px;
+	padding-left: 16px;
+	border-left: 1px solid color-mix(in srgb, var(--h3vt-text, #fff) 30%, transparent);
+	color: var(--h3vt-text, #fff);
+	font-size: 13px;
+	line-height: 1.4;
+	white-space: normal;
+}
+
 .h3vt-tour__nav {
 	display: flex;
 	gap: 0;
@@ -1231,6 +1241,11 @@
 
 	/* Nav hidden by default on mobile */
 	.h3vt-tour__nav {
+		display: none;
+	}
+
+	/* Address hidden on mobile to keep header compact */
+	.h3vt-tour__address {
 		display: none;
 	}
 

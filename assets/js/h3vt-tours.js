@@ -12,6 +12,106 @@
 (function () {
 	'use strict';
 
+	/**
+	 * Generate a poster image from the first frame of a video URL.
+	 *
+	 * Loads metadata, seeks just past the start, and snapshots the
+	 * frame to a canvas. Returns a JPEG data URL via the callback,
+	 * or null if capture is not possible (cross-origin taint, codec
+	 * failure, missing browser support, timeout).
+	 *
+	 * @param {string} videoUrl
+	 * @param {function(string|null)} callback
+	 */
+	function generateVideoPoster( videoUrl, callback ) {
+		if ( ! videoUrl || typeof document.createElement !== 'function' ) {
+			callback( null );
+			return;
+		}
+
+		var video = document.createElement( 'video' );
+		video.preload     = 'auto';
+		video.muted       = true;
+		video.playsInline = true;
+		video.setAttribute( 'playsinline', '' );
+		// Hint cross-origin so canvas reads succeed when the host serves CORS headers.
+		video.crossOrigin = 'anonymous';
+		video.src = videoUrl;
+
+		var done = false;
+		var finish = function ( result ) {
+			if ( done ) {
+				return;
+			}
+			done = true;
+			try {
+				video.removeAttribute( 'src' );
+				video.load();
+			} catch ( e ) {}
+			callback( result );
+		};
+
+		var capture = function () {
+			try {
+				var w = video.videoWidth;
+				var h = video.videoHeight;
+				if ( ! w || ! h ) {
+					finish( null );
+					return;
+				}
+				var canvas = document.createElement( 'canvas' );
+				canvas.width  = w;
+				canvas.height = h;
+				canvas.getContext( '2d' ).drawImage( video, 0, 0, w, h );
+				finish( canvas.toDataURL( 'image/jpeg', 0.82 ) );
+			} catch ( e ) {
+				finish( null );
+			}
+		};
+
+		video.addEventListener( 'loadedmetadata', function () {
+			try {
+				var target = Math.min( 0.1, Math.max( 0, ( video.duration || 1 ) - 0.05 ) );
+				video.currentTime = target;
+			} catch ( e ) {
+				capture();
+			}
+		});
+		video.addEventListener( 'seeked', capture );
+		video.addEventListener( 'error', function () { finish( null ); });
+
+		// Hard timeout — never block the UI waiting for a slow video.
+		setTimeout( function () { finish( null ); }, 6000 );
+	}
+
+	/**
+	 * Apply an auto-generated poster to a <video> element when it has
+	 * none of its own. Safe to call repeatedly — it no-ops if a poster
+	 * is already present.
+	 *
+	 * @param {HTMLVideoElement} videoEl
+	 */
+	function autoPosterVideo( videoEl ) {
+		if ( ! videoEl || videoEl.poster ) {
+			return;
+		}
+		var src = videoEl.currentSrc || videoEl.getAttribute( 'src' ) || '';
+		if ( ! src ) {
+			var source = videoEl.querySelector( 'source' );
+			if ( source ) {
+				src = source.src || source.getAttribute( 'src' ) || '';
+			}
+		}
+		if ( ! src ) {
+			return;
+		}
+		generateVideoPoster( src, function ( dataUrl ) {
+			if ( dataUrl && ! videoEl.poster ) {
+				videoEl.poster = dataUrl;
+			}
+		});
+	}
+
 	document.querySelectorAll( '.h3vt-tour' ).forEach( initTour );
 
 	/**
@@ -45,6 +145,7 @@
 		// Hero video detection — defer slideshow autoplay; ensure video plays on load.
 		var heroVideo = slides[0].querySelector( '.h3vt-tour__slide-video' );
 		if ( heroVideo ) {
+			autoPosterVideo( heroVideo );
 			isPlaying = false;
 
 			var playIcons  = tourEl.querySelectorAll( '.h3vt-tour__icon--play' );
@@ -581,6 +682,8 @@
 				el.style.width = '100%';
 				el.style.height = '100%';
 
+				autoPosterVideo( el );
+
 				if ( onEnded ) {
 					el.addEventListener( 'ended', onEnded );
 				}
@@ -636,6 +739,27 @@
 			});
 			tObserver.observe( testimonialsModal, { attributes: true, attributeFilter: [ 'hidden' ] } );
 		}
+
+		// Auto-generate a thumbnail image for any testimonial whose
+		// editor-supplied thumbnail is missing.
+		tourEl.querySelectorAll( '.h3vt-tour__testimonial-thumb' ).forEach( function ( thumb ) {
+			if ( thumb.querySelector( 'img' ) ) {
+				return;
+			}
+			var url = thumb.getAttribute( 'data-video-url' );
+			if ( ! url ) {
+				return;
+			}
+			generateVideoPoster( url, function ( dataUrl ) {
+				if ( ! dataUrl || thumb.querySelector( 'img' ) ) {
+					return;
+				}
+				var img = document.createElement( 'img' );
+				img.src = dataUrl;
+				img.alt = '';
+				thumb.insertBefore( img, thumb.firstChild );
+			});
+		});
 
 		tourEl.querySelectorAll( '.h3vt-tour__testimonial-thumb' ).forEach( function ( thumb ) {
 			thumb.addEventListener( 'click', function () {

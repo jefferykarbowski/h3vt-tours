@@ -126,6 +126,7 @@ class H3VT_Tours_Renderer {
 			'hero_video'       => get_field( 'hero_video', $post_id ),
 			'hero_title'       => get_field( 'hero_title', $post_id ) ?: '',
 			'hero_description' => get_field( 'hero_description', $post_id ) ?: '',
+			'tour_address'     => get_field( 'tour_address', $post_id ) ?: '',
 			'button_style'     => $button_style,
 			'autoplay_speed'   => $autoplay_speed,
 			'theme'            => $theme,
@@ -347,7 +348,8 @@ class H3VT_Tours_Renderer {
 	 * @param array $data Tour data.
 	 */
 	private static function render_header( $data ) {
-		$logo = $data['settings']['logo'];
+		$logo    = $data['settings']['logo'];
+		$address = $data['settings']['tour_address'];
 		?>
 		<header class="h3vt-tour__header">
 			<?php if ( ! empty( $logo ) && is_array( $logo ) ) : ?>
@@ -357,6 +359,10 @@ class H3VT_Tours_Renderer {
 						width="<?php echo esc_attr( $logo['width'] ); ?>"
 						height="<?php echo esc_attr( $logo['height'] ); ?>">
 				</div>
+			<?php endif; ?>
+
+			<?php if ( $address ) : ?>
+				<div class="h3vt-tour__address"><?php echo nl2br( esc_html( $address ) ); ?></div>
 			<?php endif; ?>
 
 			<nav class="h3vt-tour__nav">
