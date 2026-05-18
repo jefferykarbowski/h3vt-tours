@@ -1050,5 +1050,58 @@
 					break;
 			}
 		});
+
+		/* ---------------------------------------------------------------
+		 * 13. Voice-over
+		 * ------------------------------------------------------------- */
+		var voiceover = tourEl.querySelector( '.h3vt-tour__voiceover' );
+
+		if ( voiceover ) {
+			var voAudio = voiceover.querySelector( '.h3vt-tour__voiceover-audio' );
+			var voBtn   = voiceover.querySelector( '.h3vt-tour__voiceover-btn' );
+			var voLabel = voiceover.querySelector( '.h3vt-tour__voiceover-label' );
+
+			// Collapse the intro hint to an icon after a delay so visitors
+			// first notice the narration is available, then it gets out of the way.
+			var voCollapseTimer = setTimeout( function () {
+				voiceover.classList.add( 'h3vt-tour__voiceover--collapsed' );
+			}, 6000 );
+
+			voBtn.addEventListener( 'click', function () {
+				if ( voAudio.paused ) {
+					voAudio.play();
+				} else {
+					voAudio.pause();
+				}
+			});
+
+			voAudio.addEventListener( 'play', function () {
+				clearTimeout( voCollapseTimer );
+				voiceover.classList.add( 'h3vt-tour__voiceover--collapsed' );
+				voiceover.setAttribute( 'data-state', 'playing' );
+				voBtn.setAttribute( 'aria-label', voBtn.getAttribute( 'data-pause-label' ) );
+				if ( voLabel ) {
+					voLabel.textContent = voBtn.getAttribute( 'data-pause-label' );
+				}
+			});
+
+			voAudio.addEventListener( 'pause', function () {
+				voiceover.setAttribute( 'data-state', 'paused' );
+				voBtn.setAttribute( 'aria-label', voBtn.getAttribute( 'data-play-label' ) );
+				if ( voLabel ) {
+					voLabel.textContent = voBtn.getAttribute( 'data-play-label' );
+				}
+			});
+
+			// Play once — reset to the start so the visitor can replay it.
+			voAudio.addEventListener( 'ended', function () {
+				voAudio.currentTime = 0;
+				voiceover.setAttribute( 'data-state', 'paused' );
+				voBtn.setAttribute( 'aria-label', voBtn.getAttribute( 'data-play-label' ) );
+				if ( voLabel ) {
+					voLabel.textContent = voBtn.getAttribute( 'data-play-label' );
+				}
+			});
+		}
 	}
 })();

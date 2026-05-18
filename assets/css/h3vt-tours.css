@@ -1181,6 +1181,120 @@
 }
 
 /* ==========================================================================
+   15. Voice-over
+   ========================================================================== */
+
+.h3vt-tour__voiceover {
+	position: absolute;
+	right: 20px;
+	bottom: 80px;
+	z-index: 95;
+}
+
+.h3vt-tour__voiceover-audio {
+	display: none;
+}
+
+.h3vt-tour__voiceover-btn {
+	display: flex;
+	align-items: center;
+	height: 48px;
+	padding: 0 20px 0 16px;
+	border: none;
+	border-radius: 24px;
+	cursor: pointer;
+	background: var(--h3vt-button-bg-gradient, var(--h3vt-button-bg, #ff6b00));
+	color: var(--h3vt-text, #fff);
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	white-space: nowrap;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+	transition: padding 0.3s ease, background 0.2s;
+}
+
+.h3vt-tour__voiceover-btn:focus-visible {
+	outline: 2px solid var(--h3vt-text, #fff);
+	outline-offset: 2px;
+}
+
+.h3vt-tour__voiceover-icon {
+	display: flex;
+	flex: none;
+}
+
+.h3vt-tour__voiceover-icon svg {
+	width: 20px;
+	height: 20px;
+	fill: currentColor;
+}
+
+.h3vt-tour__voiceover-label {
+	overflow: hidden;
+	max-width: 220px;
+	margin-left: 8px;
+	transition: max-width 0.3s ease, opacity 0.25s ease, margin-left 0.3s ease;
+}
+
+/* Icon reflects playback state. */
+.h3vt-tour__vo-icon--pause {
+	display: none;
+}
+
+.h3vt-tour__voiceover[data-state="playing"] .h3vt-tour__vo-icon--play {
+	display: none;
+}
+
+.h3vt-tour__voiceover[data-state="playing"] .h3vt-tour__vo-icon--pause {
+	display: block;
+}
+
+/* Attention pulse while the intro hint is still expanded. */
+.h3vt-tour__voiceover:not(.h3vt-tour__voiceover--collapsed) .h3vt-tour__voiceover-btn {
+	animation: h3vt-voiceover-pulse 2s ease-out infinite;
+}
+
+@keyframes h3vt-voiceover-pulse {
+	0%   { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(255, 255, 255, 0.5); }
+	70%  { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 0 14px rgba(255, 255, 255, 0); }
+	100% { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+/* Collapsed — icon-only circle. */
+.h3vt-tour__voiceover--collapsed .h3vt-tour__voiceover-btn {
+	padding: 0 14px;
+}
+
+.h3vt-tour__voiceover--collapsed .h3vt-tour__voiceover-label {
+	max-width: 0;
+	margin-left: 0;
+	opacity: 0;
+}
+
+/* Re-expand the label on hover / focus once collapsed. */
+.h3vt-tour__voiceover--collapsed .h3vt-tour__voiceover-btn:hover,
+.h3vt-tour__voiceover--collapsed .h3vt-tour__voiceover-btn:focus-visible {
+	padding: 0 20px 0 16px;
+}
+
+.h3vt-tour__voiceover--collapsed .h3vt-tour__voiceover-btn:hover .h3vt-tour__voiceover-label,
+.h3vt-tour__voiceover--collapsed .h3vt-tour__voiceover-btn:focus-visible .h3vt-tour__voiceover-label {
+	max-width: 220px;
+	margin-left: 8px;
+	opacity: 1;
+}
+
+@media (max-width: 768px) {
+
+	.h3vt-tour__voiceover {
+		right: 12px;
+		bottom: 116px;
+	}
+}
+
+/* ==========================================================================
    15. Fullscreen Adjustments
    ========================================================================== */
 
@@ -1535,6 +1649,10 @@
 	.h3vt-tour__panel--floorplans {
 		transition-duration: 0.01s !important;
 	}
+
+	.h3vt-tour__voiceover-btn {
+		animation: none !important;
+	}
 }
 
 /* ==========================================================================
@@ -1555,7 +1673,8 @@
 	.h3vt-tour__controls,
 	.h3vt-tour__fullscreen-btn,
 	.h3vt-tour__hamburger,
-	.h3vt-tour__social {
+	.h3vt-tour__social,
+	.h3vt-tour__voiceover {
 		display: none !important;
 	}
 
