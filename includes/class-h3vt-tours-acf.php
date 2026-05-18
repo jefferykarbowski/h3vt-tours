@@ -32,11 +32,11 @@ class H3VT_Tours_ACF {
 	 */
 	public static function get_default_nav_categories() {
 		return array(
-			array( 'nav_label' => 'ACTIVITY ROOMS',     'nav_order' => 10 ),
-			array( 'nav_label' => 'COMMON AREAS',       'nav_order' => 20 ),
-			array( 'nav_label' => 'DINING / LIVING AREA', 'nav_order' => 30 ),
-			array( 'nav_label' => 'OUTDOOR AREAS',      'nav_order' => 40 ),
-			array( 'nav_label' => 'RESIDENT ROOMS',     'nav_order' => 50 ),
+			array( 'nav_label' => 'Resident Rooms',        'nav_order' => 10 ),
+			array( 'nav_label' => 'Common Areas',          'nav_order' => 20 ),
+			array( 'nav_label' => 'Activity Rooms',        'nav_order' => 30 ),
+			array( 'nav_label' => 'Dining / Living Areas', 'nav_order' => 40 ),
+			array( 'nav_label' => 'Outdoor Areas',         'nav_order' => 50 ),
 		);
 	}
 

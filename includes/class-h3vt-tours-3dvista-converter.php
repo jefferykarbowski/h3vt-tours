@@ -802,24 +802,33 @@ class H3VT_Tours_3DVista_Converter {
 
 		$locale = $this->parse_locale( $extract_dir );
 
-		// 1. Extract Photo objects: id, image URL, data.label.
-		// Pattern: {"image":...,"id":"album_XXX_0",...,"class":"Photo"}
+		// 1. Extract panorama photos from their media URL references.
+		//
+		// Photo objects are emitted with inconsistent field ordering across
+		// 3DVista export versions — sometimes "id" precedes "class":"Photo",
+		// sometimes the reverse — so matching the Photo object itself is
+		// unreliable and silently yields zero photos on newer exports.
+		// Every panorama photo is, however, referenced by a media URL of the
+		// form media/album_XXX_0.<ext> where album_XXX_0 is the photo ID, so
+		// keying off that URL works regardless of object field order.
 		$photo_map = array(); // photo_id => { filename, title }
 		if ( preg_match_all(
-			'/"id"\s*:\s*"(album_[^"]+_0)"\s*,\s*[^}]*"class"\s*:\s*"Photo"/',
+			'/"url"\s*:\s*"media\/((album_[A-Za-z0-9_]+_0)\.(?:jpg|jpeg|png|webp))"/i',
 			$content,
-			$id_matches
+			$url_matches,
+			PREG_SET_ORDER
 		) ) {
-			foreach ( $id_matches[1] as $photo_id ) {
-				// Find the image URL for this photo.
-				$filename = '';
-				$pattern  = '/"url"\s*:\s*"media\/(' . preg_quote( $photo_id, '/' ) . '\.[^"]+)"/';
-				if ( preg_match( $pattern, $content, $url_match ) ) {
-					$filename = $url_match[1];
+			foreach ( $url_matches as $url_match ) {
+				$filename = $url_match[1]; // album_XXX_0.jpg
+				$photo_id = $url_match[2]; // album_XXX_0
+
+				// Multiple resolution levels can reference the same file.
+				if ( isset( $photo_map[ $photo_id ] ) ) {
+					continue;
 				}
 
-				// Get title from locale first, then data.label.
-				$title = '';
+				// Get title from the photo-level locale label.
+				$title     = '';
 				$label_key = $photo_id . '.label';
 				if ( isset( $locale[ $label_key ] ) ) {
 					$title = $locale[ $label_key ];
@@ -1289,25 +1298,10 @@ class H3VT_Tours_3DVista_Converter {
 		update_field( 'hero_media_type', 'image', $tour_id );
 		update_field( 'hero_image', $first['id'], $tour_id );
 
-		// Navigation categories.
-		if ( $has_metadata && ! empty( $metadata['nav_categories'] ) ) {
-			$categories = array();
-			foreach ( $metadata['nav_categories'] as $order => $label ) {
-				$categories[] = array(
-					'nav_label' => $label,
-					'nav_order' => $order + 1,
-				);
-			}
-			update_field( 'nav_categories', $categories, $tour_id );
-		} elseif ( ! empty( $default_category ) ) {
-			$categories = array(
-				array(
-					'nav_label' => $default_category,
-					'nav_order' => 1,
-				),
-			);
-			update_field( 'nav_categories', $categories, $tour_id );
-		}
+		// Navigation categories — every imported tour uses the standard
+		// predetermined set so the nav structure is consistent. 3DVista's
+		// own category grouping is intentionally not used.
+		update_field( 'nav_categories', H3VT_Tours_ACF::get_default_nav_categories(), $tour_id );
 
 		// Slides repeater.
 		$slide_count = count( $attachment_ids );
@@ -1366,12 +1360,12 @@ class H3VT_Tours_3DVista_Converter {
 			update_post_meta( $tour_id, "{$prefix}slide_description", $description );
 			update_post_meta( $tour_id, "_{$prefix}slide_description", 'field_h3vt_navigation_slide_description' );
 
-			// Slide category: from metadata, or default_category, or empty.
-			$category = '';
-			if ( $photo_meta && '' !== $photo_meta['category'] ) {
-				$category = $photo_meta['category'];
-			} elseif ( ! empty( $default_category ) ) {
+			// Slide category: an explicit form-supplied default wins;
+			// otherwise auto-detect from the slide title and description.
+			if ( ! empty( $default_category ) ) {
 				$category = $default_category;
+			} else {
+				$category = $this->guess_slide_category( $title );
 			}
 
 			if ( '' !== $category ) {
@@ -1414,6 +1408,40 @@ class H3VT_Tours_3DVista_Converter {
 
 			update_field( 'embedded_tours', $tour_rows, $tour_id );
 		}
+	}
+
+	/**
+	 * Best-effort mapping of a slide title to a standard nav category.
+	 *
+	 * 3DVista archives do not carry the client's category taxonomy, so
+	 * each slide is bucketed by keyword match against its title. The
+	 * description is intentionally ignored — it is marketing copy that
+	 * frequently references other areas. Unrecognised titles fall back
+	 * to "Common Areas".
+	 *
+	 * @param string $text The slide title.
+	 * @return string One of the standard nav category labels.
+	 */
+	private function guess_slide_category( $text ) {
+		$text = ' ' . strtolower( $text ) . ' ';
+
+		$keywords = array(
+			'Resident Rooms'        => array( 'resident room', 'bedroom', 'bed room', 'private room', 'model room', 'resident suite', 'studio apartment', 'sleeping room' ),
+			'Dining / Living Areas' => array( 'dining', 'living room', 'kitchen', 'cafe', 'bistro', 'family room', 'great room', 'family-style', 'share meals' ),
+			'Activity Rooms'        => array( 'activity', 'activities', 'arts', 'art studio', 'art room', 'craft', 'game', 'fitness', 'exercise', 'theater', 'theatre', 'cinema', 'media room', 'music', 'library', 'salon', 'beauty', 'hobby' ),
+			'Outdoor Areas'         => array( 'outdoor', 'courtyard', 'garden', 'patio', 'deck', 'balcony', 'walking path', 'landscap', 'aerial', 'exterior', 'gazebo', 'porch' ),
+			'Common Areas'          => array( 'common', 'lobby', 'entrance', 'entry', 'welcome', 'reception', 'hallway', 'corridor', 'chapel', 'fireplace', 'mailroom' ),
+		);
+
+		foreach ( $keywords as $category => $words ) {
+			foreach ( $words as $word ) {
+				if ( false !== strpos( $text, $word ) ) {
+					return $category;
+				}
+			}
+		}
+
+		return 'Common Areas';
 	}
 
 	/**
