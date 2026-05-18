@@ -127,6 +127,7 @@ class H3VT_Tours_Renderer {
 			'hero_title'       => get_field( 'hero_title', $post_id ) ?: '',
 			'hero_description' => get_field( 'hero_description', $post_id ) ?: '',
 			'tour_address'     => get_field( 'tour_address', $post_id ) ?: '',
+			'voiceover'        => get_field( 'voiceover', $post_id ),
 			'button_style'     => $button_style,
 			'autoplay_speed'   => $autoplay_speed,
 			'theme'            => $theme,
@@ -331,6 +332,7 @@ class H3VT_Tours_Renderer {
 			self::render_slides( $data );
 			self::render_social_sidebar( $data );
 			self::render_bottom_bar( $data );
+			self::render_voiceover( $data );
 			self::render_modals( $data );
 			?>
 		</div>
@@ -557,6 +559,49 @@ class H3VT_Tours_Renderer {
 			</button>
 			<?php
 		}
+	}
+
+	/* ------------------------------------------------------------------
+	 * Voice-over
+	 * ----------------------------------------------------------------*/
+
+	/**
+	 * Render the floating voice-over control.
+	 *
+	 * Outputs nothing when no MP3 has been uploaded for the tour. The
+	 * control renders expanded (icon + label) so visitors notice the
+	 * narration is available; JS collapses it to an icon after a delay.
+	 *
+	 * @param array $data Tour data.
+	 */
+	private static function render_voiceover( $data ) {
+		$voiceover = $data['settings']['voiceover'];
+
+		if ( empty( $voiceover ) || ! is_array( $voiceover ) || empty( $voiceover['url'] ) ) {
+			return;
+		}
+
+		$url        = $voiceover['url'];
+		$mime       = ! empty( $voiceover['mime_type'] ) ? $voiceover['mime_type'] : 'audio/mpeg';
+		$play_label  = __( 'Play voice-over', 'h3vt-tours' );
+		$pause_label = __( 'Pause voice-over', 'h3vt-tours' );
+		?>
+		<div class="h3vt-tour__voiceover" data-state="paused">
+			<audio class="h3vt-tour__voiceover-audio" preload="none">
+				<source src="<?php echo esc_url( $url ); ?>" type="<?php echo esc_attr( $mime ); ?>">
+			</audio>
+			<button class="h3vt-tour__voiceover-btn" type="button"
+				data-play-label="<?php echo esc_attr( $play_label ); ?>"
+				data-pause-label="<?php echo esc_attr( $pause_label ); ?>"
+				aria-label="<?php echo esc_attr( $play_label ); ?>">
+				<span class="h3vt-tour__voiceover-icon">
+					<svg class="h3vt-tour__vo-icon--play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+					<svg class="h3vt-tour__vo-icon--pause" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+				</span>
+				<span class="h3vt-tour__voiceover-label"><?php echo esc_html( $play_label ); ?></span>
+			</button>
+		</div>
+		<?php
 	}
 
 	/* ------------------------------------------------------------------

@@ -193,6 +193,15 @@ class H3VT_Tours_ACF {
 					'new_lines'    => '',
 					'instructions' => 'Multi-line address shown in the header next to the logo.',
 				),
+				array(
+					'key'           => 'field_h3vt_settings_voiceover',
+					'label'         => 'Voice-Over',
+					'name'          => 'voiceover',
+					'type'          => 'file',
+					'return_format' => 'array',
+					'mime_types'    => 'mp3',
+					'instructions'  => 'Upload an MP3 narration for this tour. A floating play button appears for visitors when one is set.',
+				),
 			),
 			'location' => array(
 				array(
