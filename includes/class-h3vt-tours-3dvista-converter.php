@@ -761,12 +761,11 @@ class H3VT_Tours_3DVista_Converter {
 	 * Parse 3DVista metadata from script_general.js and locale files.
 	 *
 	 * Returns structured metadata including slide titles, descriptions,
-	 * navigation categories, floorplans, and embedded tour URLs.
+	 * floorplans, and embedded tour URLs.
 	 *
 	 * @param string $extract_dir Extracted archive directory.
 	 * @return array {
-	 *     @type array  $photos                  Keyed by image filename => { title, description, category }.
-	 *     @type array  $nav_categories           Unique category labels in presentation order.
+	 *     @type array  $photos                  Keyed by image filename => { title, description }.
 	 *     @type array  $main_playlist_filenames  Ordered image filenames from mainPlayList.
 	 *     @type array  $floorplans               Array of { label, image_file, map_id }.
 	 *     @type array  $embedded_tours            Array of { label, url }.
@@ -775,7 +774,6 @@ class H3VT_Tours_3DVista_Converter {
 	private function parse_3dvista_metadata( $extract_dir ) {
 		$metadata = array(
 			'photos'                 => array(),
-			'nav_categories'         => array(),
 			'main_playlist_filenames' => array(),
 			'floorplans'             => array(),
 			'embedded_tours'         => array(),
@@ -879,78 +877,7 @@ class H3VT_Tours_3DVista_Converter {
 			}
 		}
 
-		// 3. Parse navigation categories from DropDown skin elements.
-		//
-		// The actual tour navigation categories live in DropDown_XXX.label
-		// entries in the locale file (e.g. "RESIDENT ROOMS", "OUTDOOR AREAS").
-		// Each DropDown has a corresponding DropDown_XXX_playlist in
-		// script_general.js that lists which albums belong to that category.
-		//
-		// This replaces the old approach of using album labels as categories,
-		// which produced incorrect per-album "categories" instead of the real
-		// navigation groups.
-
-		// 3a. Collect DropDown labels from locale (skip _mobile duplicates).
-		$dropdown_labels = array(); // dropdown_id => label
-		foreach ( $locale as $key => $value ) {
-			if ( 0 !== strpos( $key, 'DropDown_' ) ) {
-				continue;
-			}
-			// Match "DropDown_XXX.label" but not "DropDown_XXX_mobile.label".
-			if ( false === strpos( $key, '.label' ) ) {
-				continue;
-			}
-			if ( false !== strpos( $key, '_mobile.' ) ) {
-				continue;
-			}
-
-			// Extract the DropDown ID: everything before ".label".
-			$dropdown_id = substr( $key, 0, strpos( $key, '.label' ) );
-			$dropdown_labels[ $dropdown_id ] = $value;
-		}
-
-		// 3b. Parse DropDown playlists from script_general.js.
-		// Each DropDown_XXX_playlist contains items with "media":"this.album_YYY".
-		$album_to_category = array(); // album_id => category label
-		$dropdown_order    = array(); // ordered list of category labels
-
-		foreach ( $dropdown_labels as $dropdown_id => $label ) {
-			$playlist_id  = $dropdown_id . '_playlist';
-			$playlist_pos = strpos( $content, '"id":"' . $playlist_id . '"' );
-			if ( false === $playlist_pos ) {
-				continue;
-			}
-
-			// Search backwards for the items array belonging to this playlist.
-			$items_start = strrpos( substr( $content, 0, $playlist_pos ), '"items"' );
-			if ( false === $items_start ) {
-				continue;
-			}
-
-			$section   = substr( $content, $items_start, $playlist_pos - $items_start );
-			$album_ids = array();
-			if ( preg_match_all( '/"media"\s*:\s*"this\.(album_[^"]+)"/', $section, $dd_matches ) ) {
-				$album_ids = $dd_matches[1];
-			}
-
-			if ( empty( $album_ids ) ) {
-				continue;
-			}
-
-			$dropdown_order[] = $label;
-
-			// Assign each album to this category (first match wins, so more
-			// specific dropdowns should be processed before catch-all ones).
-			foreach ( $album_ids as $album_id ) {
-				if ( ! isset( $album_to_category[ $album_id ] ) ) {
-					$album_to_category[ $album_id ] = $label;
-				}
-			}
-		}
-
-		$metadata['nav_categories'] = $dropdown_order;
-
-		// 4. Extract mainPlayList — ordered album references.
+		// 3. Extract mainPlayList — ordered album references.
 		// Pattern: "media":"this.album_XXX" inside mainPlayList items.
 		$playlist_album_ids = array();
 		$playlist_pos       = strpos( $content, '"id":"mainPlayList"' );
@@ -965,13 +892,10 @@ class H3VT_Tours_3DVista_Converter {
 			}
 		}
 
-		// 5. Map photos to albums and build the final photos array.
+		// 4. Map photos to albums and build the final photos array.
 		// A photo_id like album_XXX_0 belongs to album_id album_XXX.
 		foreach ( $playlist_album_ids as $album_id ) {
 			$album_info = isset( $album_map[ $album_id ] ) ? $album_map[ $album_id ] : null;
-
-			// Category comes from the DropDown mapping, not the album label.
-			$category = isset( $album_to_category[ $album_id ] ) ? $album_to_category[ $album_id ] : '';
 
 			// Find the photo for this album (album_id + '_0').
 			$photo_id = $album_id . '_0';
@@ -994,20 +918,18 @@ class H3VT_Tours_3DVista_Converter {
 					$metadata['photos'][ $filename ] = array(
 						'title'       => $title,
 						'description' => $description,
-						'category'    => $category,
 					);
 				}
 			}
 		}
 
-		// 6. Add any photos not in the mainPlayList.
+		// 5. Add any photos not in the mainPlayList.
 		foreach ( $photo_map as $photo_id => $photo ) {
 			$filename = $photo['filename'];
 			if ( '' !== $filename && ! isset( $metadata['photos'][ $filename ] ) ) {
 				// Derive album_id by stripping the trailing _0.
 				$album_id   = preg_replace( '/_0$/', '', $photo_id );
 				$album_info = isset( $album_map[ $album_id ] ) ? $album_map[ $album_id ] : null;
-				$category   = isset( $album_to_category[ $album_id ] ) ? $album_to_category[ $album_id ] : '';
 
 				$title = $album_info ? $album_info['label'] : '';
 				if ( '' === $title ) {
@@ -1017,7 +939,6 @@ class H3VT_Tours_3DVista_Converter {
 				$metadata['photos'][ $filename ] = array(
 					'title'       => $title,
 					'description' => $album_info ? $album_info['subtitle'] : '',
-					'category'    => $category,
 				);
 			}
 		}
