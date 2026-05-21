@@ -817,6 +817,7 @@ class H3VT_Tours_3DVista_Converter {
 	 *     @type array  $floorplans               Array of { label, image_file, map_id }.
 	 *     @type array  $embedded_tours            Array of { label, url }.
 	 *     @type array  $testimonials             Array of { role, video_file, thumb_file }.
+	 *     @type array  $contact                  { facility_name, address, email, phone, maps_embed_url }.
 	 * }
 	 */
 	private function parse_3dvista_metadata( $extract_dir ) {
@@ -827,6 +828,7 @@ class H3VT_Tours_3DVista_Converter {
 			'floorplans'             => array(),
 			'embedded_tours'         => array(),
 			'testimonials'           => array(),
+			'contact'                => array(),
 		);
 
 		$script_file = $extract_dir . '/script_general.js';
@@ -1225,6 +1227,98 @@ class H3VT_Tours_3DVista_Converter {
 			}
 		}
 
+		// 9. Extract contact details.
+		//
+		// The contact card is built from two skin elements: an HTMLText
+		// block (facility name, address, email, phone) and a WebFrame
+		// holding a Google Maps embed URL. The HTMLText markup is heavily
+		// styled, so block-level tags are converted to newlines before the
+		// visible text is read line by line.
+		$contact = array(
+			'facility_name'  => isset( $locale['tour.name'] ) ? trim( $locale['tour.name'] ) : '',
+			'address'        => '',
+			'email'          => '',
+			'phone'          => '',
+			'maps_embed_url' => '',
+		);
+
+		foreach ( $locale as $key => $value ) {
+			if ( 0 !== strpos( $key, 'WebFrame_' ) || false === strpos( $key, '.url' ) ) {
+				continue;
+			}
+			if ( false !== strpos( $key, '_mobile' ) ) {
+				continue;
+			}
+			if ( false !== strpos( $value, 'google.com/maps' ) ) {
+				$contact['maps_embed_url'] = trim( $value );
+				break;
+			}
+		}
+
+		// Locate the contact HTMLText block — the one that carries an email.
+		$contact_html = '';
+		foreach ( $locale as $key => $value ) {
+			if ( 0 !== strpos( $key, 'HTMLText_' ) || '.html' !== substr( $key, -5 ) ) {
+				continue;
+			}
+			if ( false !== strpos( $key, '_mobile' ) ) {
+				continue;
+			}
+			if ( preg_match( '/[\w.+-]+@[\w-]+\.[\w.-]+/', $value ) ) {
+				$contact_html = $value;
+				break;
+			}
+		}
+
+		if ( '' !== $contact_html ) {
+			// Convert block tags to newlines, then strip the remaining markup.
+			$text = preg_replace( '/<br\b[^>]*>/i', "\n", $contact_html );
+			$text = preg_replace( '/<\/(p|div)>/i', "\n", $text );
+			$text = wp_strip_all_tags( $text );
+			$text = html_entity_decode( $text, ENT_QUOTES, 'UTF-8' );
+
+			$contact_lines = array();
+			foreach ( explode( "\n", $text ) as $line ) {
+				$line = trim( $line );
+				if ( '' !== $line ) {
+					$contact_lines[] = $line;
+				}
+			}
+
+			// Pull the email and phone out; the remaining lines are the
+			// facility name and the street address. Fax numbers are ignored.
+			$remaining = array();
+			foreach ( $contact_lines as $line ) {
+				if ( '' === $contact['email'] && preg_match( '/[\w.+-]+@[\w-]+\.[\w.-]+/', $line, $em ) ) {
+					$contact['email'] = $em[0];
+					continue;
+				}
+				if ( preg_match( '/\(?\d{3}\)?[\s.\-]*\d{3}[\s.\-]*\d{4}/', $line, $ph ) ) {
+					if ( '' === $contact['phone'] && false === stripos( $line, 'fax' ) ) {
+						$contact['phone'] = trim( $ph[0] );
+					}
+					continue;
+				}
+				$remaining[] = $line;
+			}
+
+			// Separate the facility-name line from the address lines.
+			if ( '' === $contact['facility_name'] && ! empty( $remaining ) ) {
+				$contact['facility_name'] = array_shift( $remaining );
+			} else {
+				foreach ( $remaining as $idx => $line ) {
+					if ( 0 === strcasecmp( $line, $contact['facility_name'] ) ) {
+						unset( $remaining[ $idx ] );
+						break;
+					}
+				}
+			}
+
+			$contact['address'] = implode( "\n", array_values( $remaining ) );
+		}
+
+		$metadata['contact'] = $contact;
+
 		return $metadata;
 	}
 
@@ -1601,6 +1695,37 @@ class H3VT_Tours_3DVista_Converter {
 			if ( ! empty( $testimonial_rows ) ) {
 				update_field( 'enable_testimonials', true, $tour_id );
 				update_field( 'testimonials', $testimonial_rows, $tour_id );
+			}
+		}
+
+		// Contact — populate from parsed 3DVista contact details.
+		if ( ! empty( $metadata['contact'] ) ) {
+			$contact = $metadata['contact'];
+
+			$has_contact = '' !== $contact['facility_name']
+				|| '' !== $contact['address']
+				|| '' !== $contact['email']
+				|| '' !== $contact['phone']
+				|| '' !== $contact['maps_embed_url'];
+
+			if ( $has_contact ) {
+				update_field( 'enable_contact', true, $tour_id );
+
+				if ( '' !== $contact['facility_name'] ) {
+					update_field( 'contact_facility_name', $contact['facility_name'], $tour_id );
+				}
+				if ( '' !== $contact['address'] ) {
+					update_field( 'contact_address', $contact['address'], $tour_id );
+				}
+				if ( '' !== $contact['email'] ) {
+					update_field( 'contact_email', $contact['email'], $tour_id );
+				}
+				if ( '' !== $contact['phone'] ) {
+					update_field( 'contact_phone', $contact['phone'], $tour_id );
+				}
+				if ( '' !== $contact['maps_embed_url'] ) {
+					update_field( 'google_maps_embed_url', $contact['maps_embed_url'], $tour_id );
+				}
 			}
 		}
 	}
