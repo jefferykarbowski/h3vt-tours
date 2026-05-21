@@ -413,12 +413,29 @@ class H3VT_Tours_3DVista_Converter {
 		// Reorder panoramas to match the 3DVista presentation order.
 		$images = $this->order_images_by_metadata( $images, $metadata );
 
-		// Catalog floorplan images separately.
-		$floorplan_images = $this->catalog_floorplan_images( $extract_dir, $metadata );
-		$panorama_count   = count( $images );
+		// Catalog floorplan and testimonial files separately.
+		$floorplan_images  = $this->catalog_floorplan_images( $extract_dir, $metadata );
+		$testimonial_items = $this->catalog_testimonial_files( $extract_dir, $metadata );
 
-		// Merge panorama + floorplan images into a single upload queue.
-		$all_images = array_merge( $images, $floorplan_images );
+		// Build a single upload queue with a parallel metadata array that
+		// records the role of each file (panorama / floorplan / testimonial
+		// video / testimonial thumbnail). The finalize step uses this to
+		// route each uploaded attachment to the correct ACF field.
+		$all_images = array();
+		$image_meta = array();
+
+		foreach ( $images as $path ) {
+			$all_images[] = $path;
+			$image_meta[] = array( 'role' => 'panorama' );
+		}
+		foreach ( $floorplan_images as $fp_index => $path ) {
+			$all_images[] = $path;
+			$image_meta[] = array( 'role' => 'floorplan', 'index' => $fp_index );
+		}
+		foreach ( $testimonial_items as $item ) {
+			$all_images[] = $item['path'];
+			$image_meta[] = $item['meta'];
+		}
 
 		// Create the tour post as a draft.
 		$tour_id = wp_insert_post( array(
@@ -447,11 +464,11 @@ class H3VT_Tours_3DVista_Converter {
 			'tour_id'          => $tour_id,
 			'extract_dir'      => $extract_dir,
 			'images'           => $all_images,
+			'image_meta'       => $image_meta,
 			'template_id'      => $template_id,
 			'default_category' => $default_category,
 			'parsed_title'     => $parsed_title,
 			'attachment_ids'   => array(),
-			'panorama_count'   => $panorama_count,
 			'metadata'         => $metadata,
 		);
 
@@ -559,31 +576,51 @@ class H3VT_Tours_3DVista_Converter {
 				wp_send_json_error( array( 'message' => __( 'Import job expired or not found.', 'h3vt-tours' ) ) );
 			}
 
-			// Collect successfully uploaded attachments (preserving order).
-			$attachment_ids = array();
-			foreach ( $job['images'] as $i => $path ) {
-				if ( isset( $job['attachment_ids'][ $i ] ) ) {
-					$attachment_ids[] = $job['attachment_ids'][ $i ];
-				}
-			}
-
 			$tour_id = $job['tour_id'];
 
-			if ( empty( $attachment_ids ) ) {
+			if ( empty( $job['attachment_ids'] ) ) {
 				wp_delete_post( $tour_id, true );
 				$this->cleanup( $job['extract_dir'] );
 				delete_transient( self::TRANSIENT_PREFIX . $job_id );
 				wp_send_json_error( array( 'message' => __( 'All image uploads failed. Tour was not created.', 'h3vt-tours' ) ) );
 			}
 
-			// Partition attachments into panoramas and floorplans.
-			$panorama_count  = isset( $job['panorama_count'] ) ? intval( $job['panorama_count'] ) : count( $attachment_ids );
-			$panorama_atts   = array_slice( $attachment_ids, 0, $panorama_count );
-			$floorplan_atts  = array_slice( $attachment_ids, $panorama_count );
-			$metadata        = isset( $job['metadata'] ) ? $job['metadata'] : array();
+			// Partition uploaded attachments by their queued role. Using the
+			// per-file metadata (rather than count-based slicing) keeps the
+			// buckets correct even when individual uploads fail.
+			$panorama_atts      = array();
+			$floorplan_atts     = array();
+			$testimonial_videos = array();
+			$testimonial_thumbs = array();
+
+			foreach ( $job['images'] as $i => $path ) {
+				if ( ! isset( $job['attachment_ids'][ $i ] ) ) {
+					continue;
+				}
+
+				$att  = $job['attachment_ids'][ $i ];
+				$meta = isset( $job['image_meta'][ $i ] ) ? $job['image_meta'][ $i ] : array();
+				$role = isset( $meta['role'] ) ? $meta['role'] : 'panorama';
+
+				switch ( $role ) {
+					case 'floorplan':
+						$floorplan_atts[ $meta['index'] ] = $att;
+						break;
+					case 'testimonial_video':
+						$testimonial_videos[ $meta['index'] ] = $att;
+						break;
+					case 'testimonial_thumb':
+						$testimonial_thumbs[ $meta['index'] ] = $att;
+						break;
+					default:
+						$panorama_atts[] = $att;
+				}
+			}
+
+			$metadata = isset( $job['metadata'] ) ? $job['metadata'] : array();
 
 			// Populate ACF fields with metadata.
-			$this->populate_acf_fields( $tour_id, $panorama_atts, $job['template_id'], $job['default_category'], $metadata, $floorplan_atts );
+			$this->populate_acf_fields( $tour_id, $panorama_atts, $job['template_id'], $job['default_category'], $metadata, $floorplan_atts, $testimonial_videos, $testimonial_thumbs );
 
 			// Clean up temp directory and transient.
 			$this->cleanup( $job['extract_dir'] );
@@ -598,6 +635,15 @@ class H3VT_Tours_3DVista_Converter {
 				'<a href="' . esc_url( $edit_link ) . '">',
 				'</a>'
 			);
+
+			$testimonial_total = count( $testimonial_videos );
+			if ( $testimonial_total > 0 ) {
+				$message .= ' ' . sprintf(
+					/* translators: %d: number of testimonial videos */
+					_n( '%d testimonial video imported.', '%d testimonial videos imported.', $testimonial_total, 'h3vt-tours' ),
+					$testimonial_total
+				);
+			}
 
 			if ( ! empty( $job['parsed_title'] ) ) {
 				$message .= ' ' . sprintf(
@@ -770,6 +816,7 @@ class H3VT_Tours_3DVista_Converter {
 	 *     @type array  $main_playlist_filenames  Ordered image filenames from mainPlayList.
 	 *     @type array  $floorplans               Array of { label, image_file, map_id }.
 	 *     @type array  $embedded_tours            Array of { label, url }.
+	 *     @type array  $testimonials             Array of { role, video_file, thumb_file }.
 	 * }
 	 */
 	private function parse_3dvista_metadata( $extract_dir ) {
@@ -779,6 +826,7 @@ class H3VT_Tours_3DVista_Converter {
 			'main_playlist_filenames' => array(),
 			'floorplans'             => array(),
 			'embedded_tours'         => array(),
+			'testimonials'           => array(),
 		);
 
 		$script_file = $extract_dir . '/script_general.js';
@@ -1115,6 +1163,68 @@ class H3VT_Tours_3DVista_Converter {
 			);
 		}
 
+		// 8. Extract testimonial videos.
+		//
+		// Each Video object exposes a "video_<ID>.label" locale entry (the
+		// speaker's role, e.g. "Daughter of Current Resident") and a
+		// "videolevel_<ID2>.url" entry pointing at the media/ mp4 file. The
+		// thumbnail is the "_t.jpg" sidecar next to the video.
+		$video_labels = array(); // video_<ID> => role label.
+		foreach ( $locale as $key => $value ) {
+			if ( 0 !== strpos( $key, 'video_' ) ) {
+				continue;
+			}
+			if ( '.label' !== substr( $key, -6 ) ) {
+				continue;
+			}
+			if ( false !== strpos( $key, '_mobile' ) ) {
+				continue;
+			}
+			$video_id                  = substr( $key, 0, -6 );
+			$video_labels[ $video_id ] = $value;
+		}
+
+		if ( ! empty( $video_labels ) ) {
+			$seen_videos = array();
+			foreach ( $locale as $key => $value ) {
+				if ( 0 !== strpos( $key, 'videolevel_' ) || '.url' !== substr( $key, -4 ) ) {
+					continue;
+				}
+				if ( false !== strpos( $key, '_mobile' ) ) {
+					continue;
+				}
+
+				$video_file = basename( $value );
+				if ( '' === $video_file ) {
+					continue;
+				}
+
+				// Match the file against a known video_<ID>.label entry.
+				$matched_id = '';
+				foreach ( $video_labels as $video_id => $role ) {
+					if ( 0 === strpos( $video_file, $video_id ) ) {
+						$matched_id = $video_id;
+						break;
+					}
+				}
+				if ( '' === $matched_id ) {
+					continue;
+				}
+
+				// A video may be listed at multiple resolutions — keep the first.
+				if ( isset( $seen_videos[ $matched_id ] ) ) {
+					continue;
+				}
+				$seen_videos[ $matched_id ] = true;
+
+				$metadata['testimonials'][] = array(
+					'role'       => $video_labels[ $matched_id ],
+					'video_file' => $video_file,
+					'thumb_file' => $matched_id . '_t.jpg',
+				);
+			}
+		}
+
 		return $metadata;
 	}
 
@@ -1141,6 +1251,51 @@ class H3VT_Tours_3DVista_Converter {
 		}
 
 		return $images;
+	}
+
+	/**
+	 * Find testimonial video and thumbnail files in the extracted archive.
+	 *
+	 * Each returned item is an upload-queue entry carrying the absolute
+	 * file path and a metadata array describing its role and the index of
+	 * the testimonial it belongs to, so the finalize step can pair videos
+	 * with thumbnails even if some uploads fail.
+	 *
+	 * @param string $extract_dir Extracted archive directory.
+	 * @param array  $metadata    Parsed 3DVista metadata.
+	 * @return array List of { path, meta } upload-queue items.
+	 */
+	private function catalog_testimonial_files( $extract_dir, $metadata ) {
+		if ( empty( $metadata['testimonials'] ) ) {
+			return array();
+		}
+
+		$media_dir = $extract_dir . '/media';
+		$items     = array();
+
+		foreach ( $metadata['testimonials'] as $t_index => $testimonial ) {
+			if ( ! empty( $testimonial['video_file'] ) ) {
+				$video_path = $media_dir . '/' . $testimonial['video_file'];
+				if ( file_exists( $video_path ) ) {
+					$items[] = array(
+						'path' => $video_path,
+						'meta' => array( 'role' => 'testimonial_video', 'index' => $t_index ),
+					);
+				}
+			}
+
+			if ( ! empty( $testimonial['thumb_file'] ) ) {
+				$thumb_path = $media_dir . '/' . $testimonial['thumb_file'];
+				if ( file_exists( $thumb_path ) ) {
+					$items[] = array(
+						'path' => $thumb_path,
+						'meta' => array( 'role' => 'testimonial_thumb', 'index' => $t_index ),
+					);
+				}
+			}
+		}
+
+		return $items;
 	}
 
 	/**
@@ -1225,6 +1380,14 @@ class H3VT_Tours_3DVista_Converter {
 				continue;
 			}
 
+			// Skip video sidecar images — testimonial/popup video posters
+			// (video_XXX_poster_en.jpg) and thumbnails (video_XXX_t.jpg).
+			// The poster files are solid-black placeholders and must not
+			// become panorama slides; the videos are imported separately.
+			if ( 0 === strpos( $basename, 'video_' ) ) {
+				continue;
+			}
+
 			$images[] = $file->getPathname();
 		}
 
@@ -1282,10 +1445,12 @@ class H3VT_Tours_3DVista_Converter {
 	 * @param array  $attachment_ids   Array of [ 'id' => int, 'filename' => string ].
 	 * @param int    $template_id      Template post ID (0 for none).
 	 * @param string $default_category Default navigation category label.
-	 * @param array  $metadata         Parsed 3DVista metadata (optional).
-	 * @param array  $floorplan_atts   Floorplan attachment data (optional).
+	 * @param array  $metadata           Parsed 3DVista metadata (optional).
+	 * @param array  $floorplan_atts     Floorplan attachment data (optional).
+	 * @param array  $testimonial_videos Testimonial video attachments keyed by testimonial index (optional).
+	 * @param array  $testimonial_thumbs Testimonial thumbnail attachments keyed by testimonial index (optional).
 	 */
-	private function populate_acf_fields( $tour_id, $attachment_ids, $template_id, $default_category, $metadata = array(), $floorplan_atts = array() ) {
+	private function populate_acf_fields( $tour_id, $attachment_ids, $template_id, $default_category, $metadata = array(), $floorplan_atts = array(), $testimonial_videos = array(), $testimonial_thumbs = array() ) {
 		$has_metadata = ! empty( $metadata ) && ! empty( $metadata['photos'] );
 
 		// Template.
@@ -1293,10 +1458,12 @@ class H3VT_Tours_3DVista_Converter {
 			update_field( 'tour_template', $template_id, $tour_id );
 		}
 
-		// Hero — use the first image.
-		$first = $attachment_ids[0];
-		update_field( 'hero_media_type', 'image', $tour_id );
-		update_field( 'hero_image', $first['id'], $tour_id );
+		// Hero — use the first slide image.
+		if ( ! empty( $attachment_ids ) ) {
+			$first = $attachment_ids[0];
+			update_field( 'hero_media_type', 'image', $tour_id );
+			update_field( 'hero_image', $first['id'], $tour_id );
+		}
 
 		// Navigation categories — every imported tour uses the standard
 		// predetermined set so the nav structure is consistent. 3DVista's
@@ -1407,6 +1574,34 @@ class H3VT_Tours_3DVista_Converter {
 			}
 
 			update_field( 'embedded_tours', $tour_rows, $tour_id );
+		}
+
+		// Testimonials — one repeater row per video that uploaded successfully.
+		if ( ! empty( $metadata['testimonials'] ) && ! empty( $testimonial_videos ) ) {
+			$testimonial_rows = array();
+
+			foreach ( $metadata['testimonials'] as $t_index => $testimonial ) {
+				if ( ! isset( $testimonial_videos[ $t_index ] ) ) {
+					continue;
+				}
+
+				$row = array(
+					'person_name' => '',
+					'person_role' => isset( $testimonial['role'] ) ? $testimonial['role'] : '',
+					'video_url'   => $testimonial_videos[ $t_index ]['id'],
+				);
+
+				if ( isset( $testimonial_thumbs[ $t_index ] ) ) {
+					$row['thumbnail'] = $testimonial_thumbs[ $t_index ]['id'];
+				}
+
+				$testimonial_rows[] = $row;
+			}
+
+			if ( ! empty( $testimonial_rows ) ) {
+				update_field( 'enable_testimonials', true, $tour_id );
+				update_field( 'testimonials', $testimonial_rows, $tour_id );
+			}
 		}
 	}
 
