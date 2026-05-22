@@ -1435,6 +1435,11 @@ class H3VT_Tours_3DVista_Converter {
 	/**
 	 * Scan the media/ folder for full-resolution panorama images.
 	 *
+	 * Only files directly inside media/ are considered. 3DVista stores each
+	 * 360 panorama's multi-resolution tile pyramid in a per-panorama subfolder
+	 * (media/panorama_<id>/d/<level>/); those tiles are runtime rendering
+	 * assets, not importable slides, and must not be cataloged.
+	 *
 	 * Excludes thumbnail variants (files ending in _t before the extension)
 	 * and floorplan images (files starting with map_).
 	 *
@@ -1454,6 +1459,13 @@ class H3VT_Tours_3DVista_Converter {
 
 		foreach ( $iter as $file ) {
 			if ( ! $file->isFile() ) {
+				continue;
+			}
+
+			// Skip deep-zoom panorama tiles. Importable panoramas (album_*.jpg)
+			// sit directly in media/; anything in a subfolder is tile-pyramid
+			// data from a media/panorama_*/d/ directory.
+			if ( '' !== $iter->getSubPath() ) {
 				continue;
 			}
 
