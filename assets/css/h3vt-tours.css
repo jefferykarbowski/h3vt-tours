@@ -672,24 +672,31 @@
 
 .h3vt-tour__testimonial-carousel {
 	display: flex;
-	gap: 12px;
-	padding: 16px;
+	gap: 10px;
+	padding: 14px 16px 18px;
 	overflow-x: auto;
 	background: #111;
 	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 255, 255, 0.45) #222;
 }
 
 .h3vt-tour__testimonial-carousel::-webkit-scrollbar {
-	height: 6px;
+	height: 10px;
 }
 
 .h3vt-tour__testimonial-carousel::-webkit-scrollbar-track {
 	background: #222;
+	border-radius: 5px;
 }
 
 .h3vt-tour__testimonial-carousel::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.2);
-	border-radius: 3px;
+	background: rgba(255, 255, 255, 0.45);
+	border-radius: 5px;
+}
+
+.h3vt-tour__testimonial-carousel::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.65);
 }
 
 .h3vt-tour__testimonial-thumb {
@@ -700,9 +707,10 @@
 	background: none;
 	border: 2px solid transparent;
 	border-radius: 8px;
-	padding: 8px;
+	padding: 6px;
 	cursor: pointer;
-	min-width: 100px;
+	min-width: 76px;
+	flex: 0 0 auto;
 	transition: border-color 0.2s;
 	color: var(--h3vt-text, #fff);
 	font-family: inherit;
@@ -727,8 +735,8 @@
 }
 
 .h3vt-tour__testimonial-thumb img {
-	width: 64px;
-	height: 64px;
+	width: 48px;
+	height: 48px;
 	border-radius: 50%;
 	object-fit: cover;
 }
