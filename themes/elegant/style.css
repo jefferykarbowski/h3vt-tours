@@ -280,7 +280,7 @@
 	background: none;
 	border: 2px solid transparent;
 	border-radius: 8px;
-	color: var(--h3vt-header-bg, #1A1A1A);
+	color: #1A1A1A;
 	width: 116px;
 	padding: 8px 6px;
 	text-align: center;
@@ -306,7 +306,7 @@
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 1.25;
-	color: var(--h3vt-header-bg, #1A1A1A);
+	color: #1A1A1A;
 	white-space: normal;
 	overflow-wrap: break-word;
 }
@@ -314,7 +314,7 @@
 .h3vt-tour--theme-elegant .h3vt-tour__testimonial-role {
 	font-size: 11px;
 	line-height: 1.25;
-	color: color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 62%, #fff);
+	color: #6b6b6b;
 	white-space: normal;
 	overflow-wrap: break-word;
 }
