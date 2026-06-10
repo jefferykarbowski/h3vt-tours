@@ -102,6 +102,15 @@ class H3VT_Tours_ACF {
 					'allow_null'    => 1,
 					'instructions'  => 'Select a template for shared styling (colors, logo, icon, button style, autoplay speed). Leave empty to use defaults.',
 				),
+				array(
+					'key'           => 'field_h3vt_tour_logo_override',
+					'label'         => 'Logo Override',
+					'name'          => 'logo_override',
+					'type'          => 'image',
+					'return_format' => 'array',
+					'preview_size'  => 'medium',
+					'instructions'  => 'Optional logo used for this tour only, replacing the template logo. Leave empty to use the template logo.',
+				),
 			),
 			'location' => array(
 				array(

@@ -84,6 +84,14 @@ class H3VT_Tours_Renderer {
 		}
 
 		/*
+		 * Per-tour logo override — replaces the template logo when set.
+		 */
+		$logo_override = get_field( 'logo_override', $post_id );
+		if ( ! empty( $logo_override ) && is_array( $logo_override ) ) {
+			$logo = $logo_override;
+		}
+
+		/*
 		 * Parse gradient fields — extract the first color stop as
 		 * a solid fallback for hover states, borders, links, etc.
 		 * The full gradient string is passed separately for backgrounds.

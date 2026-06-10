@@ -323,6 +323,12 @@
 
 @media (max-width: 767px) {
 
+	/* Keep the header logo compact so wide logos don't dominate the header */
+	.h3vt-tour--theme-elegant .h3vt-tour__logo img {
+		max-height: 44px;
+		max-width: 60vw;
+	}
+
 	.h3vt-tour--theme-elegant .h3vt-tour__slide-content {
 		top: 80px;
 		left: 16px;
