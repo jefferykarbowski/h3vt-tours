@@ -49,6 +49,17 @@
 	background: #000;
 }
 
+/*
+ * Direct full-page tour view (single-h3vt_tour.php template): no theme
+ * chrome is present, so the tour fills the entire viewport rather than
+ * the default 90vh, eliminating the black space below it. dvh accounts
+ * for mobile browser UI; vh is the fallback for older browsers.
+ */
+.h3vt-tour-page .h3vt-tour {
+	height: 100vh;
+	height: 100dvh;
+}
+
 .h3vt-tour-embed {
 	overflow: hidden;
 }
