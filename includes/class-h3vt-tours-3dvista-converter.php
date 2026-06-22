@@ -1153,10 +1153,10 @@ class H3VT_Tours_3DVista_Converter {
 				continue;
 			}
 
-			// Derive a label from the URL (e.g. "Matterport Tour").
+			// Derive a label from the URL (e.g. "3D Virtual Tour").
 			$label = '3D Tour';
 			if ( false !== strpos( $value, 'matterport.com' ) ) {
-				$label = 'Matterport Tour';
+				$label = '3D Virtual Tour';
 			}
 
 			$metadata['embedded_tours'][] = array(
