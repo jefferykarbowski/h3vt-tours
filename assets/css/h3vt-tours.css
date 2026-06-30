@@ -688,26 +688,30 @@
 	overflow-x: auto;
 	background: #111;
 	-webkit-overflow-scrolling: touch;
-	scrollbar-width: thin;
-	scrollbar-color: rgba(255, 255, 255, 0.45) #222;
+	/* Force the scrollbar to always be visible (overrides macOS overlay
+	   scrollbars that fade out when not actively scrolling). */
+	scrollbar-width: auto;
+	scrollbar-color: rgba(255, 255, 255, 0.85) #2c2c2c;
 }
 
 .h3vt-tour__testimonial-carousel::-webkit-scrollbar {
-	height: 10px;
+	height: 12px;
+	-webkit-appearance: none;
 }
 
 .h3vt-tour__testimonial-carousel::-webkit-scrollbar-track {
-	background: #222;
-	border-radius: 5px;
+	background: #2c2c2c;
+	border-radius: 6px;
 }
 
 .h3vt-tour__testimonial-carousel::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.45);
-	border-radius: 5px;
+	background: rgba(255, 255, 255, 0.85);
+	border-radius: 6px;
+	border: 2px solid #2c2c2c;
 }
 
 .h3vt-tour__testimonial-carousel::-webkit-scrollbar-thumb:hover {
-	background: rgba(255, 255, 255, 0.65);
+	background: #ffffff;
 }
 
 .h3vt-tour__testimonial-thumb {
