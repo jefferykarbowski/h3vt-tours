@@ -1,0 +1,188 @@
+/**
+ * Auberge Theme — H3VT Tours
+ *
+ * Recreates the look of the Auberge 3DVista tours: solid black header with the
+ * orange corner arc, orange italic uppercase navigation, slate dropdown panels
+ * with an orange selected state, and orange "A" icon buttons.
+ *
+ * Colors come from the template's CSS custom properties where possible:
+ *   --h3vt-button-bg   Auberge orange (#ED8B00)
+ *   --h3vt-header-bg   black
+ *   --h3vt-hover       pressed orange (#EC8B01)
+ *
+ * Scoped to .h3vt-tour--theme-auberge
+ *
+ * @package H3VT_Tours
+ */
+
+.h3vt-tour--theme-auberge {
+	font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+	background: #000;
+}
+
+/* ---------- Header: solid black + orange corner arc ---------- */
+
+/*
+ * No `overflow: hidden` here — it would clip the open nav dropdowns, which
+ * hang below the header. The arc is inset to the header box already.
+ */
+.h3vt-tour--theme-auberge .h3vt-tour__header {
+	background: var(--h3vt-header-bg-gradient, var(--h3vt-header-bg, #000));
+	/* Clear the corner arc so the logo starts on solid black, as in the tour. */
+	padding-left: 178px;
+}
+
+/* The arc is the real skin artwork, stretched to the header height. */
+.h3vt-tour--theme-auberge .h3vt-tour__header::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	width: 190px;
+	background: url('header-corner.png') no-repeat left top;
+	background-size: 100% 100%;
+	pointer-events: none;
+	z-index: 0;
+}
+
+/* Keep logo / nav / address above the arc. */
+.h3vt-tour--theme-auberge .h3vt-tour__logo,
+.h3vt-tour--theme-auberge .h3vt-tour__address,
+.h3vt-tour--theme-auberge .h3vt-tour__nav,
+.h3vt-tour--theme-auberge .h3vt-tour__hamburger {
+	position: relative;
+	z-index: 1;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__logo img {
+	max-height: 62px;
+	width: auto;
+}
+
+/* ---------- Navigation: orange, italic, uppercase ---------- */
+
+.h3vt-tour--theme-auberge .h3vt-tour__nav-button {
+	color: var(--h3vt-button-bg, #ED8B00);
+	font-style: italic;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	font-size: 15px;
+	gap: 10px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__nav-button:hover,
+.h3vt-tour--theme-auberge .h3vt-tour__nav-button:focus-visible {
+	color: var(--h3vt-hover, #EC8B01);
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__nav-chevron {
+	width: 12px;
+	height: 12px;
+}
+
+/* ---------- Dropdown: slate panel, orange selected row ---------- */
+
+.h3vt-tour--theme-auberge .h3vt-tour__dropdown {
+	background: #53565A;
+	border: none;
+	border-radius: 0;
+	padding: 0;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__dropdown-item {
+	color: #fff;
+	font-weight: 600;
+	font-size: 13px;
+	padding: 10px 18px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__dropdown-item:hover,
+.h3vt-tour--theme-auberge .h3vt-tour__dropdown-item:focus-visible {
+	background: var(--h3vt-dropdown-hover, var(--h3vt-hover, #EC8B01));
+	color: #fff;
+}
+
+/* ---------- Slide title: white, upper-left, understated ---------- */
+
+.h3vt-tour--theme-auberge .h3vt-tour__slide-content {
+	top: 22%;
+	bottom: auto;
+	left: 48px;
+	max-width: 380px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__slide-title {
+	font-size: 1.35rem;
+	font-weight: 700;
+	color: #fff;
+	margin-bottom: 8px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__slide-description {
+	font-size: 0.95rem;
+}
+
+/* ---------- Playback controls: white outline, orange on hover ---------- */
+
+.h3vt-tour--theme-auberge .h3vt-tour__control {
+	border-color: rgba(255, 255, 255, 0.85);
+	width: 44px;
+	height: 44px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__control:hover,
+.h3vt-tour--theme-auberge .h3vt-tour__control:focus-visible {
+	background: var(--h3vt-nav-control-hover, var(--h3vt-hover, #ED8B00));
+	border-color: var(--h3vt-nav-control-hover, var(--h3vt-hover, #ED8B00));
+	color: #fff;
+}
+
+/* ---------- Bottom icon buttons: orange "A" mark + orange label ---------- */
+
+.h3vt-tour--theme-auberge .h3vt-tour__bottom-btn--icon img {
+	width: 46px;
+	height: 46px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__bottom-btn--icon span {
+	color: var(--h3vt-button-bg, #ED8B00);
+	font-weight: 700;
+	font-size: 12px;
+	letter-spacing: 0.2px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__bottom-btn--icon:hover span,
+.h3vt-tour--theme-auberge .h3vt-tour__bottom-btn--icon:focus-visible span {
+	color: var(--h3vt-hover, #EC8B01);
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__bottom-btn--text {
+	font-style: italic;
+	font-weight: 700;
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 768px) {
+	.h3vt-tour--theme-auberge .h3vt-tour__header {
+		padding-left: 16px;
+	}
+
+	.h3vt-tour--theme-auberge .h3vt-tour__header::before {
+		width: 90px;
+		opacity: 0.9;
+	}
+
+	.h3vt-tour--theme-auberge .h3vt-tour__logo img {
+		max-height: 44px;
+	}
+
+	.h3vt-tour--theme-auberge .h3vt-tour__slide-content {
+		top: auto;
+		bottom: 110px;
+		left: 20px;
+		right: 20px;
+	}
+}
