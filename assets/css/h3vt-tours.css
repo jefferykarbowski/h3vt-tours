@@ -661,9 +661,24 @@
    ========================================================================== */
 
 /*
+ * The nav stays lit and clickable above an open gallery so categories can be
+ * switched without closing it first. The backdrop still covers the tour —
+ * it fills the modal's padding box — while the gallery itself is inset into
+ * the band between the header and the bottom bar (both measured by JS).
+ */
+.h3vt-tour[data-nav-mode="modal"] .h3vt-tour__header {
+	z-index: 600;
+}
+
+.h3vt-tour__modal--nav {
+	padding-top: var(--h3vt-chrome-top, 0px);
+	padding-bottom: var(--h3vt-chrome-bottom, 0px);
+}
+
+/*
  * The panel hugs the photo rather than letterboxing it: the image is left
- * at its natural size, capped by the viewport, and the shrink-to-fit modal
- * content takes its width from there.
+ * at its natural size, capped to the space between the chrome, and the
+ * shrink-to-fit modal content takes its width from there.
  */
 .h3vt-tour__modal--nav .h3vt-tour__modal-content {
 	max-width: 92vw;
@@ -687,7 +702,7 @@
 .h3vt-tour__nav-slide img {
 	display: block;
 	max-width: 92vw;
-	max-height: 74vh;
+	max-height: var(--h3vt-nav-img-max, 60vh);
 }
 
 .h3vt-tour__nav-slide-caption {

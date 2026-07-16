@@ -313,7 +313,28 @@
 		}
 
 		if ( 'modal' === navMode ) {
-			// Nav button opens its category gallery.
+			/**
+			 * Publish the header / bottom-bar heights so the gallery can sit
+			 * in the band between them, leaving both lit and clickable.
+			 */
+			function measureChrome() {
+				var header = tourEl.querySelector( '.h3vt-tour__header' );
+				var bar    = tourEl.querySelector( '.h3vt-tour__bottom-bar' );
+				var top    = header ? header.offsetHeight : 0;
+				var bottom = bar ? bar.offsetHeight : 0;
+
+				// Room for the caption under the photo.
+				var image = Math.max( 160, tourEl.clientHeight - top - bottom - 60 );
+
+				tourEl.style.setProperty( '--h3vt-chrome-top', top + 'px' );
+				tourEl.style.setProperty( '--h3vt-chrome-bottom', bottom + 'px' );
+				tourEl.style.setProperty( '--h3vt-nav-img-max', image + 'px' );
+			}
+
+			measureChrome();
+			window.addEventListener( 'resize', measureChrome );
+
+			// Nav button opens its category gallery, or swaps the open one to it.
 			tourEl.querySelectorAll( '.h3vt-tour__nav-button[data-nav-modal]' ).forEach( function ( btn ) {
 				btn.addEventListener( 'click', function ( e ) {
 					e.stopPropagation();
@@ -444,6 +465,18 @@
 		function openModal( modalEl ) {
 			if ( ! modalEl ) {
 				return;
+			}
+
+			/*
+			 * Only one overlay at a time. The header stays clickable above an
+			 * open gallery, so this is the path that swaps one nav category
+			 * for another without closing first.
+			 */
+			var current = tourEl.querySelector(
+				'.h3vt-tour__modal:not([hidden]), .h3vt-tour__panel--open'
+			);
+			if ( current && current !== modalEl ) {
+				closeModal( current );
 			}
 
 			// Pause slideshow while modal is open.
