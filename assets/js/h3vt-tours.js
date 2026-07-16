@@ -262,61 +262,123 @@
 		resetAutoplay();
 
 		/* ---------------------------------------------------------------
-		 * 3. Navigation Dropdowns
+		 * 3. Navigation
+		 *
+		 * Two modes, set per theme via nav_mode: 'dropdown' (default) lists
+		 * a category's slides under the button, 'modal' opens the category
+		 * as a gallery of its slides with prev/next arrows.
 		 * ------------------------------------------------------------- */
+		var navMode  = tourEl.getAttribute( 'data-nav-mode' ) || 'dropdown';
 		var navItems = tourEl.querySelectorAll( '.h3vt-tour__nav-item' );
 
-		navItems.forEach( function ( navItem ) {
-			var btn = navItem.querySelector( 'button, .h3vt-tour__nav-btn' );
-			if ( btn ) {
-				btn.addEventListener( 'click', function ( e ) {
-					e.stopPropagation();
-					var wasOpen = navItem.classList.contains( 'h3vt-tour__nav-item--open' );
-
-					// Close every other open nav item first.
-					navItems.forEach( function ( item ) {
-						item.classList.remove( 'h3vt-tour__nav-item--open' );
-					});
-
-					if ( ! wasOpen ) {
-						navItem.classList.add( 'h3vt-tour__nav-item--open' );
-					}
-				});
+		/**
+		 * Collapse the mobile hamburger menu, if there is one.
+		 */
+		function closeMobileMenu() {
+			if ( ! hamburger ) {
+				return;
 			}
 
-			// Dropdown item click — navigate to the target slide.
-			navItem.querySelectorAll( '[data-slide-index]' ).forEach( function ( link ) {
-				link.addEventListener( 'click', function ( e ) {
-					e.preventDefault();
-					e.stopPropagation();
-					var idx = parseInt( link.getAttribute( 'data-slide-index' ), 10 );
-					if ( ! isNaN( idx ) ) {
-						goToSlide( idx );
-					}
-					navItem.classList.remove( 'h3vt-tour__nav-item--open' );
+			hamburger.classList.remove( 'h3vt-tour__hamburger--open' );
+			hamburger.setAttribute( 'aria-expanded', 'false' );
 
-					// Collapse the mobile hamburger menu.
-					if ( hamburger ) {
-						hamburger.classList.remove( 'h3vt-tour__hamburger--open' );
-						hamburger.setAttribute( 'aria-expanded', 'false' );
-						var header = tourEl.querySelector( '.h3vt-tour__header' );
-						if ( header ) {
-							header.classList.remove( 'h3vt-tour__header--menu-open' );
-						}
+			var header = tourEl.querySelector( '.h3vt-tour__header' );
+			if ( header ) {
+				header.classList.remove( 'h3vt-tour__header--menu-open' );
+			}
+		}
+
+		/**
+		 * Show another slide within a category gallery, wrapping at both ends.
+		 *
+		 * @param {HTMLElement} gallery The gallery root.
+		 * @param {number}      delta   1 for next, -1 for previous.
+		 */
+		function stepNavGallery( gallery, delta ) {
+			var slides = gallery.querySelectorAll( '.h3vt-tour__nav-slide' );
+			if ( slides.length < 2 ) {
+				return;
+			}
+
+			var current = 0;
+			slides.forEach( function ( slide, i ) {
+				if ( slide.classList.contains( 'h3vt-tour__nav-slide--active' ) ) {
+					current = i;
+				}
+			});
+
+			var next = ( current + delta + slides.length ) % slides.length;
+			slides[ current ].classList.remove( 'h3vt-tour__nav-slide--active' );
+			slides[ next ].classList.add( 'h3vt-tour__nav-slide--active' );
+		}
+
+		if ( 'modal' === navMode ) {
+			// Nav button opens its category gallery.
+			tourEl.querySelectorAll( '.h3vt-tour__nav-button[data-nav-modal]' ).forEach( function ( btn ) {
+				btn.addEventListener( 'click', function ( e ) {
+					e.stopPropagation();
+					var name = btn.getAttribute( 'data-nav-modal' );
+					openModal( tourEl.querySelector(
+						'.h3vt-tour__modal--nav[data-modal-name="' + name + '"]'
+					) );
+					closeMobileMenu();
+				});
+			});
+
+			// Gallery arrows.
+			tourEl.querySelectorAll( '.h3vt-tour__nav-gallery-arrow' ).forEach( function ( arrow ) {
+				arrow.addEventListener( 'click', function ( e ) {
+					e.stopPropagation();
+					var gallery = arrow.closest( '.h3vt-tour__nav-gallery' );
+					if ( gallery ) {
+						stepNavGallery( gallery, 'next' === arrow.getAttribute( 'data-nav-gallery' ) ? 1 : -1 );
 					}
 				});
 			});
-		});
+		} else {
+			navItems.forEach( function ( navItem ) {
+				var btn = navItem.querySelector( 'button, .h3vt-tour__nav-btn' );
+				if ( btn ) {
+					btn.addEventListener( 'click', function ( e ) {
+						e.stopPropagation();
+						var wasOpen = navItem.classList.contains( 'h3vt-tour__nav-item--open' );
 
-		// Close dropdowns on outside click.
-		document.addEventListener( 'click', function ( e ) {
-			var nav = tourEl.querySelector( '.h3vt-tour__nav' );
-			if ( nav && ! nav.contains( e.target ) ) {
-				navItems.forEach( function ( item ) {
-					item.classList.remove( 'h3vt-tour__nav-item--open' );
+						// Close every other open nav item first.
+						navItems.forEach( function ( item ) {
+							item.classList.remove( 'h3vt-tour__nav-item--open' );
+						});
+
+						if ( ! wasOpen ) {
+							navItem.classList.add( 'h3vt-tour__nav-item--open' );
+						}
+					});
+				}
+
+				// Dropdown item click — navigate to the target slide.
+				navItem.querySelectorAll( '[data-slide-index]' ).forEach( function ( link ) {
+					link.addEventListener( 'click', function ( e ) {
+						e.preventDefault();
+						e.stopPropagation();
+						var idx = parseInt( link.getAttribute( 'data-slide-index' ), 10 );
+						if ( ! isNaN( idx ) ) {
+							goToSlide( idx );
+						}
+						navItem.classList.remove( 'h3vt-tour__nav-item--open' );
+						closeMobileMenu();
+					});
 				});
-			}
-		});
+			});
+
+			// Close dropdowns on outside click.
+			document.addEventListener( 'click', function ( e ) {
+				var nav = tourEl.querySelector( '.h3vt-tour__nav' );
+				if ( nav && ! nav.contains( e.target ) ) {
+					navItems.forEach( function ( item ) {
+						item.classList.remove( 'h3vt-tour__nav-item--open' );
+					});
+				}
+			});
+		}
 
 		/* ---------------------------------------------------------------
 		 * 4. Hamburger Menu (mobile)
@@ -412,6 +474,13 @@
 					closeModal( modalEl );
 					return;
 				}
+				// Arrows page a category gallery, mirroring its prev/next arrows.
+				var navGallery = modalEl.querySelector( '.h3vt-tour__nav-gallery' );
+				if ( navGallery && ( e.key === 'ArrowLeft' || e.key === 'ArrowRight' ) ) {
+					e.preventDefault();
+					stepNavGallery( navGallery, e.key === 'ArrowRight' ? 1 : -1 );
+					return;
+				}
 				if ( e.key === 'Tab' || e.keyCode === 9 ) {
 					var updated = getFocusable( modalEl );
 					if ( updated.length === 0 ) {
@@ -496,6 +565,12 @@
 		 * @param {HTMLElement} modalEl
 		 */
 		function cleanModalContent( modalEl ) {
+			// Rewind a category gallery so it reopens on its first slide.
+			var navSlides = modalEl.querySelectorAll( '.h3vt-tour__nav-slide' );
+			navSlides.forEach( function ( slide, i ) {
+				slide.classList.toggle( 'h3vt-tour__nav-slide--active', 0 === i );
+			});
+
 			// Remove 3D-tour iframes.
 			var tourContainer = modalEl.querySelector( '.h3vt-tour__3dtour-container' );
 			if ( tourContainer ) {
@@ -1026,6 +1101,23 @@
 				return;
 			}
 
+			var openOverlay = tourEl.querySelector(
+				'.h3vt-tour__modal:not([hidden]), .h3vt-tour__panel--open'
+			);
+
+			if ( e.key === 'Escape' ) {
+				if ( openOverlay ) {
+					closeModal( openOverlay );
+				}
+				return;
+			}
+
+			// An open modal owns the keyboard — don't drive the slideshow
+			// underneath it.
+			if ( openOverlay ) {
+				return;
+			}
+
 			switch ( e.key ) {
 				case 'ArrowLeft':
 					prevSlide();
@@ -1036,14 +1128,6 @@
 				case ' ':
 					e.preventDefault();
 					togglePlayPause();
-					break;
-				case 'Escape':
-					var openModal_ = tourEl.querySelector(
-						'.h3vt-tour__modal:not([hidden]), .h3vt-tour__panel--open'
-					);
-					if ( openModal_ ) {
-						closeModal( openModal_ );
-					}
 					break;
 				case 'Home':
 					goToSlide( 0 );

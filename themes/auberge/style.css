@@ -104,6 +104,47 @@
 	color: #fff;
 }
 
+/* ---------- Nav category gallery: white panel, photo + caption ---------- */
+
+.h3vt-tour--theme-auberge .h3vt-tour__modal--nav .h3vt-tour__modal-content {
+	background: #fff;
+	border-radius: 2px;
+}
+
+/* The tour stays legible behind the gallery, as in the 3DVista tour. */
+.h3vt-tour--theme-auberge .h3vt-tour__modal--nav .h3vt-tour__modal-backdrop {
+	background: rgba(0, 0, 0, 0.55);
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__nav-slide-caption {
+	color: #53565A;
+	font-weight: 600;
+}
+
+/* Close tile sits on the photo's top-right corner, as in the tour. */
+.h3vt-tour--theme-auberge .h3vt-tour__modal--nav .h3vt-tour__modal-close {
+	top: 8px;
+	right: 8px;
+	width: 42px;
+	height: 42px;
+	border-radius: 2px;
+	background: #fff;
+	color: #1a1a1a;
+	font-size: 30px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__modal--nav .h3vt-tour__modal-close:hover,
+.h3vt-tour--theme-auberge .h3vt-tour__modal--nav .h3vt-tour__modal-close:focus-visible {
+	background: var(--h3vt-button-bg, #ED8B00);
+	color: #fff;
+}
+
+/* Arrows overlay the photo, so they carry their own shadow for contrast. */
+.h3vt-tour--theme-auberge .h3vt-tour__nav-gallery-arrow {
+	color: #fff;
+	filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.65));
+}
+
 /* ---------- Slide title: white, upper-left, understated ---------- */
 
 .h3vt-tour--theme-auberge .h3vt-tour__slide-content {
