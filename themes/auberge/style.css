@@ -142,14 +142,14 @@
 /* ---------- Bottom icon buttons: orange "A" mark + orange label ---------- */
 
 .h3vt-tour--theme-auberge .h3vt-tour__bottom-btn--icon img {
-	width: 46px;
-	height: 46px;
+	width: 64px;
+	height: 64px;
 }
 
 .h3vt-tour--theme-auberge .h3vt-tour__bottom-btn--icon span {
 	color: var(--h3vt-button-bg, #ED8B00);
 	font-weight: 700;
-	font-size: 12px;
+	font-size: 14px;
 	letter-spacing: 0.2px;
 }
 
@@ -184,5 +184,15 @@
 		bottom: 110px;
 		left: 20px;
 		right: 20px;
+	}
+
+	/* Keep the enlarged icon buttons from crowding the mobile bottom bar. */
+	.h3vt-tour--theme-auberge .h3vt-tour__bottom-btn--icon img {
+		width: 44px;
+		height: 44px;
+	}
+
+	.h3vt-tour--theme-auberge .h3vt-tour__bottom-btn--icon span {
+		font-size: 11px;
 	}
 }
