@@ -204,6 +204,57 @@
 	font-weight: 700;
 }
 
+/* ---------- Exit intent popup: white card, slate text, orange CTA ---------- */
+
+.h3vt-tour--theme-auberge .h3vt-tour__modal--exit .h3vt-tour__modal-content {
+	background: #fff;
+	border-radius: 2px;
+	color: #53565A;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__exit-headline {
+	color: #1a1a1a;
+	font-style: italic;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__exit-message {
+	opacity: 1;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__exit-field span {
+	color: #53565A;
+	opacity: 1;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__exit-field input {
+	background: #fff;
+	border-color: #c9cbce;
+	color: #1a1a1a;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__exit-submit {
+	font-style: italic;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__exit-dismiss {
+	color: #53565A;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__modal--exit .h3vt-tour__modal-close {
+	color: #1a1a1a;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__modal--exit .h3vt-tour__modal-close:hover,
+.h3vt-tour--theme-auberge .h3vt-tour__modal--exit .h3vt-tour__modal-close:focus-visible {
+	background: var(--h3vt-button-bg, #ED8B00);
+	color: #fff;
+}
+
 /* ---------- Mobile ---------- */
 
 @media (max-width: 768px) {

@@ -66,6 +66,13 @@ class H3VT_Tours_Renderer {
 				'tiktok'    => get_field( 'social_tiktok', $template_id ) ?: '',
 				'pinterest' => get_field( 'social_pinterest', $template_id ) ?: '',
 			);
+			$exit_intent            = array(
+				'enabled'     => (bool) get_field( 'exit_intent_enabled', $template_id ),
+				'headline'    => get_field( 'exit_intent_headline', $template_id ) ?: __( 'Wait — before you go!', 'h3vt-tours' ),
+				'message'     => get_field( 'exit_intent_message', $template_id ) ?: __( 'Leave your details and our team will reach out right away with pricing, availability, and answers to all of your questions.', 'h3vt-tours' ),
+				'button_text' => get_field( 'exit_intent_button_text', $template_id ) ?: __( 'Request More Info', 'h3vt-tours' ),
+				'tour_id'     => $post_id,
+			);
 		} else {
 			$primary_color_raw      = '#FF6B00';
 			$secondary_color_raw    = '#1A1A1A';
@@ -81,6 +88,12 @@ class H3VT_Tours_Renderer {
 			$pdf_file               = null;
 			$pdf_button_text        = __( 'Brochure', 'h3vt-tours' );
 			$socials                = array();
+			$exit_intent            = array(
+				'enabled'     => false,
+				'headline'    => '',
+				'message'     => '',
+				'button_text' => '',
+			);
 		}
 
 		/*
@@ -143,6 +156,7 @@ class H3VT_Tours_Renderer {
 			'pdf_file'         => $pdf_file,
 			'pdf_button_text'  => $pdf_button_text,
 			'socials'          => array_filter( $socials ),
+			'exit_intent'      => $exit_intent,
 		);
 
 		/*
@@ -678,6 +692,68 @@ class H3VT_Tours_Renderer {
 		if ( ! empty( $data['settings']['pdf_file'] ) ) {
 			self::render_pdf_modal( $data );
 		}
+
+		if ( ! empty( $data['settings']['exit_intent']['enabled'] ) ) {
+			self::render_exit_intent_modal( $data );
+		}
+	}
+
+	/**
+	 * Exit-intent lead-capture modal.
+	 *
+	 * Hidden until the front-end JS detects the visitor moving to leave the
+	 * page; the form posts to the exit-intent REST endpoint, which emails
+	 * the lead to the marketing team.
+	 *
+	 * @param array $data Tour data.
+	 */
+	private static function render_exit_intent_modal( $data ) {
+		$exit     = $data['settings']['exit_intent'];
+		$endpoint = rest_url( 'h3vt-tours/v1/exit-intent' );
+		?>
+		<div class="h3vt-tour__modal h3vt-tour__modal--exit" data-modal-name="exit-intent" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr( $exit['headline'] ); ?>" hidden>
+			<div class="h3vt-tour__modal-backdrop"></div>
+			<div class="h3vt-tour__modal-content">
+				<button class="h3vt-tour__modal-close" aria-label="<?php esc_attr_e( 'Close', 'h3vt-tours' ); ?>">&times;</button>
+
+				<h3 class="h3vt-tour__exit-headline"><?php echo esc_html( $exit['headline'] ); ?></h3>
+				<p class="h3vt-tour__exit-message"><?php echo esc_html( $exit['message'] ); ?></p>
+
+				<form class="h3vt-tour__exit-form" action="<?php echo esc_url( $endpoint ); ?>" method="post" novalidate>
+					<input type="hidden" name="tour_id" value="<?php echo esc_attr( $exit['tour_id'] ); ?>">
+					<?php /* Honeypot — hidden from humans, bots fill it in. */ ?>
+					<input type="text" name="company_website" class="h3vt-tour__exit-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+					<label class="h3vt-tour__exit-field">
+						<span><?php esc_html_e( 'Name', 'h3vt-tours' ); ?></span>
+						<input type="text" name="name" required autocomplete="name">
+					</label>
+					<label class="h3vt-tour__exit-field">
+						<span><?php esc_html_e( 'Email', 'h3vt-tours' ); ?></span>
+						<input type="email" name="email" required autocomplete="email">
+					</label>
+					<label class="h3vt-tour__exit-field">
+						<span><?php esc_html_e( 'Phone (optional)', 'h3vt-tours' ); ?></span>
+						<input type="tel" name="phone" autocomplete="tel">
+					</label>
+
+					<p class="h3vt-tour__exit-error" hidden><?php esc_html_e( 'Something went wrong — please try again.', 'h3vt-tours' ); ?></p>
+
+					<button type="submit" class="h3vt-tour__exit-submit">
+						<?php echo esc_html( $exit['button_text'] ); ?>
+					</button>
+					<button type="button" class="h3vt-tour__exit-dismiss">
+						<?php esc_html_e( 'No thanks, keep exploring', 'h3vt-tours' ); ?>
+					</button>
+				</form>
+
+				<div class="h3vt-tour__exit-success" hidden>
+					<h3 class="h3vt-tour__exit-headline"><?php esc_html_e( 'Thank you!', 'h3vt-tours' ); ?></h3>
+					<p class="h3vt-tour__exit-message"><?php esc_html_e( 'Our team will be in touch with you shortly.', 'h3vt-tours' ); ?></p>
+				</div>
+			</div>
+		</div>
+		<?php
 	}
 
 	/**

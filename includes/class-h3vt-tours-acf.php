@@ -76,6 +76,7 @@ class H3VT_Tours_ACF {
 		$this->register_template_selector();
 		$this->register_tour_settings();
 		$this->register_template_fields();
+		$this->register_exit_intent();
 		$this->register_navigation_slides();
 		$this->register_testimonials();
 		$this->register_floorplans();
@@ -411,6 +412,106 @@ class H3VT_Tours_ACF {
 				),
 			),
 			'menu_order' => 0,
+		) );
+	}
+
+	/**
+	 * Exit Intent Popup — lead-capture prompt shown when a visitor moves to
+	 * leave the tour. Configured per template so every tour using the
+	 * template inherits it.
+	 */
+	private function register_exit_intent() {
+		acf_add_local_field_group( array(
+			'key'      => 'group_h3vt_exit_intent',
+			'title'    => 'Exit Intent Popup',
+			'fields'   => array(
+				array(
+					'key'           => 'field_h3vt_exit_intent_enabled',
+					'label'         => 'Enable Exit Intent Popup',
+					'name'          => 'exit_intent_enabled',
+					'type'          => 'true_false',
+					'ui'            => 1,
+					'default_value' => 0,
+					'instructions'  => 'Show a lead-capture popup when a visitor moves to leave the tour.',
+				),
+				array(
+					'key'               => 'field_h3vt_exit_intent_headline',
+					'label'             => 'Headline',
+					'name'              => 'exit_intent_headline',
+					'type'              => 'text',
+					'default_value'     => "Wait \xE2\x80\x94 before you go!",
+					'conditional_logic' => array(
+						array(
+							array(
+								'field'    => 'field_h3vt_exit_intent_enabled',
+								'operator' => '==',
+								'value'    => '1',
+							),
+						),
+					),
+				),
+				array(
+					'key'               => 'field_h3vt_exit_intent_message',
+					'label'             => 'Message',
+					'name'              => 'exit_intent_message',
+					'type'              => 'textarea',
+					'rows'              => 3,
+					'default_value'     => 'Leave your details and our team will reach out right away with pricing, availability, and answers to all of your questions.',
+					'conditional_logic' => array(
+						array(
+							array(
+								'field'    => 'field_h3vt_exit_intent_enabled',
+								'operator' => '==',
+								'value'    => '1',
+							),
+						),
+					),
+				),
+				array(
+					'key'               => 'field_h3vt_exit_intent_button_text',
+					'label'             => 'Button Text',
+					'name'              => 'exit_intent_button_text',
+					'type'              => 'text',
+					'default_value'     => 'Request More Info',
+					'wrapper'           => array( 'width' => '50' ),
+					'conditional_logic' => array(
+						array(
+							array(
+								'field'    => 'field_h3vt_exit_intent_enabled',
+								'operator' => '==',
+								'value'    => '1',
+							),
+						),
+					),
+				),
+				array(
+					'key'               => 'field_h3vt_exit_intent_notify_email',
+					'label'             => 'Notification Email',
+					'name'              => 'exit_intent_notify_email',
+					'type'              => 'email',
+					'instructions'      => 'Leads are emailed here. Leave blank to use the site admin email.',
+					'wrapper'           => array( 'width' => '50' ),
+					'conditional_logic' => array(
+						array(
+							array(
+								'field'    => 'field_h3vt_exit_intent_enabled',
+								'operator' => '==',
+								'value'    => '1',
+							),
+						),
+					),
+				),
+			),
+			'location' => array(
+				array(
+					array(
+						'param'    => 'post_type',
+						'operator' => '==',
+						'value'    => 'h3vt_tour_template',
+					),
+				),
+			),
+			'menu_order' => 1,
 		) );
 	}
 

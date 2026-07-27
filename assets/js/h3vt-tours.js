@@ -1220,5 +1220,121 @@
 				}
 			});
 		}
+
+		/* ---------------------------------------------------------------
+		 * 14. Exit Intent Popup
+		 *
+		 * Opens the lead-capture modal when the cursor leaves the page
+		 * toward the browser chrome (or leaves the iframe upward when the
+		 * tour is embedded). Fires at most once per session, and never in
+		 * the first few seconds so quick bounces aren't interrupted.
+		 * ------------------------------------------------------------- */
+		var exitModal = tourEl.querySelector( '.h3vt-tour__modal--exit' );
+
+		if ( exitModal ) {
+			var exitStorageKey = 'h3vtExitIntentShown';
+			var exitShown      = false;
+			var exitArmed      = false;
+
+			try {
+				exitShown = sessionStorage.getItem( exitStorageKey ) === '1';
+			} catch ( e ) {}
+
+			setTimeout( function () {
+				exitArmed = true;
+			}, 5000 );
+
+			document.addEventListener( 'mouseout', function ( e ) {
+				if ( exitShown || ! exitArmed ) {
+					return;
+				}
+
+				// Only when the cursor actually leaves the document.
+				if ( e.relatedTarget || e.toElement ) {
+					return;
+				}
+
+				// Heading up toward the tabs / address bar, not off the sides.
+				if ( e.clientY > 24 ) {
+					return;
+				}
+
+				// Don't stack on top of another open modal.
+				if ( tourEl.querySelector( '.h3vt-tour__modal:not([hidden]), .h3vt-tour__panel--open' ) ) {
+					return;
+				}
+
+				exitShown = true;
+				try {
+					sessionStorage.setItem( exitStorageKey, '1' );
+				} catch ( e2 ) {}
+
+				openModal( exitModal );
+			});
+
+			// "No thanks" link closes the modal.
+			var exitDismiss = exitModal.querySelector( '.h3vt-tour__exit-dismiss' );
+			if ( exitDismiss ) {
+				exitDismiss.addEventListener( 'click', function () {
+					closeModal( exitModal );
+				});
+			}
+
+			// Submit the lead to the REST endpoint without leaving the tour.
+			var exitForm = exitModal.querySelector( '.h3vt-tour__exit-form' );
+			if ( exitForm ) {
+				exitForm.addEventListener( 'submit', function ( e ) {
+					e.preventDefault();
+
+					var errorEl  = exitModal.querySelector( '.h3vt-tour__exit-error' );
+					var submitEl = exitForm.querySelector( '.h3vt-tour__exit-submit' );
+					var payload  = {};
+
+					Array.prototype.forEach.call( exitForm.elements, function ( field ) {
+						if ( field.name ) {
+							payload[ field.name ] = field.value;
+						}
+					});
+
+					if ( errorEl ) {
+						errorEl.setAttribute( 'hidden', '' );
+					}
+					if ( submitEl ) {
+						submitEl.disabled = true;
+					}
+
+					fetch( exitForm.action, {
+						method:  'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body:    JSON.stringify( payload )
+					})
+						.then( function ( response ) {
+							if ( ! response.ok ) {
+								throw new Error( 'Request failed' );
+							}
+							return response.json();
+						})
+						.then( function () {
+							exitForm.setAttribute( 'hidden', '' );
+							var intro = exitModal.querySelectorAll( '.h3vt-tour__modal-content > .h3vt-tour__exit-headline, .h3vt-tour__modal-content > .h3vt-tour__exit-message' );
+							Array.prototype.forEach.call( intro, function ( el ) {
+								el.setAttribute( 'hidden', '' );
+							});
+							var success = exitModal.querySelector( '.h3vt-tour__exit-success' );
+							if ( success ) {
+								success.removeAttribute( 'hidden' );
+							}
+						})
+						.catch( function () {
+							if ( errorEl ) {
+								errorEl.removeAttribute( 'hidden' );
+							}
+							if ( submitEl ) {
+								submitEl.disabled = false;
+							}
+						});
+				});
+			}
+		}
 	}
 })();
