@@ -79,6 +79,12 @@ jobs:
 
       - name: Build embed plugin zip
         run: |
+          VERSION="${{ needs.check_version.outputs.version }}"
+          # Stamp the release version into the embed plugin so its header always
+          # matches the release tag the update checker compares against.
+          sed -i -E "s/^( \* Version:[[:space:]]*)[0-9]+\.[0-9]+\.[0-9]+/\1${VERSION}/" embed-plugin/h3vt-tours-embed/h3vt-tours-embed.php
+          sed -i -E "s/(define\( 'H3VT_EMBED_VERSION', ')[0-9]+\.[0-9]+\.[0-9]+(' \);)/\1${VERSION}\2/" embed-plugin/h3vt-tours-embed/h3vt-tours-embed.php
+          sed -i -E "s/^(Stable tag:[[:space:]]*)[0-9]+\.[0-9]+\.[0-9]+/\1${VERSION}/" embed-plugin/h3vt-tours-embed/readme.txt
           cd embed-plugin && zip -r ../h3vt-tours-embed.zip h3vt-tours-embed/
 
       - name: Create Release

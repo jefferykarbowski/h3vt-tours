@@ -4,7 +4,7 @@ Tags: virtual tour, embed, shortcode
 Requires at least: 5.0
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 1.0.0
+Stable tag: 1.6.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,10 @@ Tour HTML is cached in WordPress transients. You can adjust the cache duration
 in Settings or clear the cache manually at any time.
 
 == Changelog ==
+
+= 1.6.9 =
+* Fix automatic updates: plugin version now matches the GitHub release tag, so
+  the built-in updater installs the correct version.
 
 = 1.0.0 =
 * Initial release.
