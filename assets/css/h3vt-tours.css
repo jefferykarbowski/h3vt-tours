@@ -37,6 +37,22 @@
 	padding: 0;
 }
 
+/*
+ * Host-theme defence. A tour renders inside whatever theme the site runs, and
+ * bare element selectors from that theme (h1–h6 colors, input padding) land
+ * inside the tour and win on source order. Neutralise the properties that
+ * actually leak so a tour looks identical on every site it is embedded in.
+ */
+.h3vt-tour h1,
+.h3vt-tour h2,
+.h3vt-tour h3,
+.h3vt-tour h4,
+.h3vt-tour h5,
+.h3vt-tour h6 {
+	color: inherit;
+	line-height: 1.25;
+}
+
 .h3vt-tour img {
 	max-width: 100%;
 	height: auto;
@@ -84,6 +100,15 @@
 	background: color-mix(in srgb, var(--h3vt-header-bg, #1A1A1A) 85%, transparent);
 }
 
+/*
+ * The logo is the only auto-width item in the header, so flex would pick it
+ * as the thing to crush whenever the nav is wide — collapsing it to a few
+ * pixels rather than dropping a nav item. It never shrinks.
+ */
+.h3vt-tour__logo {
+	flex: 0 0 auto;
+}
+
 .h3vt-tour__logo img {
 	max-height: 80px;
 	width: auto;
@@ -91,6 +116,8 @@
 }
 
 .h3vt-tour__address {
+	flex: 0 1 auto;
+	min-width: 132px;
 	margin-left: 16px;
 	padding-left: 16px;
 	border-left: 1px solid color-mix(in srgb, var(--h3vt-text, #fff) 30%, transparent);
@@ -594,10 +621,15 @@
    9. Modal Shared Styles
    ========================================================================== */
 
+/*
+ * Above the header and bottom bar, including the raised header that themes
+ * with nav_mode: modal use (600). The nav gallery is the one overlay that
+ * deliberately sits below the header — see .h3vt-tour__modal--nav.
+ */
 .h3vt-tour__modal {
 	position: absolute;
 	inset: 0;
-	z-index: 500;
+	z-index: 700;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -671,6 +703,8 @@
 }
 
 .h3vt-tour__modal--nav {
+	/* The one overlay that stays under the header, so the nav keeps working. */
+	z-index: 500;
 	padding-top: var(--h3vt-chrome-top, 0px);
 	padding-bottom: var(--h3vt-chrome-bottom, 0px);
 }
@@ -877,8 +911,10 @@
 	left: auto;
 	width: 400px;
 	max-width: 95vw;
-	z-index: 500;
-	background: rgba(0, 0, 0, 0.95);
+	/* Above the header — its close button and selector live in that band. */
+	z-index: 700;
+	/* Opaque: it now covers the header, and nav text ghosted through at 0.95. */
+	background: #0a0a0a;
 	padding: 20px;
 	display: flex;
 	flex-direction: column;
@@ -1262,7 +1298,7 @@
    ========================================================================== */
 
 .h3vt-tour__modal--exit {
-	z-index: 700; /* above every other overlay */
+	z-index: 800; /* above every other overlay */
 }
 
 .h3vt-tour__modal--exit .h3vt-tour__modal-content {
@@ -1317,19 +1353,33 @@
 	opacity: 0.75;
 }
 
-.h3vt-tour__exit-field input {
-	padding: 11px 12px;
-	border: 1px solid rgba(255, 255, 255, 0.25);
-	border-radius: 4px;
-	background: rgba(255, 255, 255, 0.08);
-	color: inherit;
-	font-size: 0.95rem;
-	font-family: inherit;
+/*
+ * Host themes commonly style input[type="text"] with !important and leave
+ * email/tel alone, which silently gives the three fields different heights
+ * and colors. Each declaration a theme is likely to force is re-forced here,
+ * with the values behind custom properties so themes restyle the field by
+ * setting tokens rather than by fighting this rule.
+ *
+ * The extra .h3vt-tour is load-bearing: a theme's `input[type="text"]` ties
+ * this selector on specificity, and !important ties resolve on source order,
+ * which the site stylesheet wins. One more class settles it.
+ */
+.h3vt-tour .h3vt-tour__exit-field input {
+	width: 100%;
+	height: auto !important;
+	padding: 11px 12px !important;
+	border: 1px solid var(--h3vt-field-border, rgba(255, 255, 255, 0.25)) !important;
+	border-radius: 4px !important;
+	background: var(--h3vt-field-bg, rgba(255, 255, 255, 0.08)) !important;
+	color: var(--h3vt-field-text, inherit) !important;
+	font-family: inherit !important;
+	font-size: 0.95rem !important;
+	line-height: 1.4 !important;
 }
 
-.h3vt-tour__exit-field input:focus {
+.h3vt-tour .h3vt-tour__exit-field input:focus {
 	outline: none;
-	border-color: var(--h3vt-button-bg, #ff6b00);
+	border-color: var(--h3vt-button-bg, #ff6b00) !important;
 }
 
 .h3vt-tour__exit-submit {
@@ -1573,13 +1623,62 @@
 }
 
 /* ==========================================================================
-   16. Responsive - Tablet (max-width: 1024px)
+   16. Responsive - Header Budget
+
+   The header holds a logo, an address, every nav category, and the window
+   controls on one line. Past a point those cannot all fit, and flex resolves
+   the conflict by crushing the logo. Give up the pieces deliberately instead,
+   cheapest first: nav padding, then the address (one tap away in Contact),
+   then the categories themselves (into the hamburger).
    ========================================================================== */
 
-@media (max-width: 1024px) {
+@media (max-width: 1600px) {
 	.h3vt-tour__nav-button {
 		font-size: 13px;
 		padding: 8px 10px;
+	}
+}
+
+@media (max-width: 1400px) {
+	.h3vt-tour__address {
+		display: none;
+	}
+}
+
+@media (min-width: 768px) and (max-width: 1200px) {
+
+	.h3vt-tour__hamburger {
+		display: block;
+	}
+
+	.h3vt-tour__nav {
+		display: none;
+	}
+
+	.h3vt-tour__header--menu-open .h3vt-tour__nav {
+		display: flex;
+		flex-direction: column;
+		position: absolute;
+		top: 100%;
+		left: 0;
+		right: 0;
+		background: rgba(0, 0, 0, 0.95);
+		padding: 10px 0;
+		z-index: 1;
+	}
+
+	/*
+	 * The hidden nav no longer supplies the auto margins that pushed these
+	 * right, so the fullscreen button takes over the job. The hamburger drops
+	 * its own auto margin — two of them would split the free space and strand
+	 * the pair mid-header instead of grouping them at the edge.
+	 */
+	.h3vt-tour__fullscreen-btn {
+		margin-left: auto;
+	}
+
+	.h3vt-tour__hamburger {
+		margin-left: 8px;
 	}
 }
 

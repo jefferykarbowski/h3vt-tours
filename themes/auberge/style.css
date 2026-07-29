@@ -18,6 +18,11 @@
 .h3vt-tour--theme-auberge {
 	font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
 	background: #000;
+
+	/* Form fields read as white cards on this theme's light panels. */
+	--h3vt-field-bg: #fff;
+	--h3vt-field-border: #c9cbce;
+	--h3vt-field-text: #1a1a1a;
 }
 
 /* ---------- Header: solid black + orange corner arc ---------- */
@@ -29,7 +34,7 @@
 .h3vt-tour--theme-auberge .h3vt-tour__header {
 	background: var(--h3vt-header-bg-gradient, var(--h3vt-header-bg, #000));
 	/* Clear the corner arc so the logo starts on solid black, as in the tour. */
-	padding-left: 178px;
+	padding-left: 132px;
 }
 
 /* The arc is the real skin artwork, stretched to the header height. */
@@ -39,24 +44,29 @@
 	top: 0;
 	left: 0;
 	bottom: 0;
-	width: 190px;
+	width: 140px;
 	background: url('header-corner.png') no-repeat left top;
 	background-size: 100% 100%;
 	pointer-events: none;
 	z-index: 0;
 }
 
-/* Keep logo / nav / address above the arc. */
+/*
+ * Keep logo / nav / address above the arc. These are flex children of the
+ * header, and z-index alone orders a flex item — no `position` needed. Adding
+ * one here would pin the nav to `relative` and beat the `absolute` the
+ * collapsed hamburger menu relies on, dropping the menu inside the header
+ * instead of below it.
+ */
 .h3vt-tour--theme-auberge .h3vt-tour__logo,
 .h3vt-tour--theme-auberge .h3vt-tour__address,
 .h3vt-tour--theme-auberge .h3vt-tour__nav,
 .h3vt-tour--theme-auberge .h3vt-tour__hamburger {
-	position: relative;
 	z-index: 1;
 }
 
 .h3vt-tour--theme-auberge .h3vt-tour__logo img {
-	max-height: 62px;
+	max-height: 46px;
 	width: auto;
 }
 
@@ -80,6 +90,13 @@
 .h3vt-tour--theme-auberge .h3vt-tour__nav-chevron {
 	width: 12px;
 	height: 12px;
+}
+
+/* Buy back header width before the address or the categories have to go. */
+@media (max-width: 1600px) {
+	.h3vt-tour--theme-auberge .h3vt-tour__nav-button {
+		font-size: 13px;
+	}
 }
 
 /* ---------- Dropdown: slate panel, orange selected row ---------- */
@@ -227,12 +244,6 @@
 .h3vt-tour--theme-auberge .h3vt-tour__exit-field span {
 	color: #53565A;
 	opacity: 1;
-}
-
-.h3vt-tour--theme-auberge .h3vt-tour__exit-field input {
-	background: #fff;
-	border-color: #c9cbce;
-	color: #1a1a1a;
 }
 
 .h3vt-tour--theme-auberge .h3vt-tour__exit-submit {
