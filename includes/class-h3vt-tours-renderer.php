@@ -145,30 +145,45 @@ class H3VT_Tours_Renderer {
 		);
 
 		/*
-		 * Navigation categories — sorted by nav_order.
+		 * Navigation categories + slides. Each category row carries its own
+		 * gallery; slides are flattened in category order, each receiving a
+		 * 1-based slide_index (0 = hero). Title comes from the attachment
+		 * title, description from the attachment caption, and floorplan
+		 * hotspot data from attachment fields.
 		 */
 		$raw_categories = get_field( 'nav_categories', $post_id );
 		$nav_categories = array();
+		$slides         = array();
+		$index          = 1;
 		if ( is_array( $raw_categories ) ) {
-			$nav_categories = $raw_categories;
-			usort( $nav_categories, function ( $a, $b ) {
-				$a_order = isset( $a['nav_order'] ) ? (int) $a['nav_order'] : 0;
-				$b_order = isset( $b['nav_order'] ) ? (int) $b['nav_order'] : 0;
-				return $a_order - $b_order;
-			} );
+			foreach ( $raw_categories as $category ) {
+				$label            = isset( $category['nav_label'] ) ? $category['nav_label'] : '';
+				$nav_categories[] = array( 'nav_label' => $label );
+
+				if ( empty( $category['nav_gallery'] ) || ! is_array( $category['nav_gallery'] ) ) {
+					continue;
+				}
+
+				foreach ( $category['nav_gallery'] as $image ) {
+					if ( ! is_array( $image ) ) {
+						continue;
+					}
+					$slides[] = self::gallery_image_to_slide( $image, $label, $index );
+					$index++;
+				}
+			}
 		}
 
 		/*
-		 * Slides — each receives a 1-based slide_index (0 = hero).
+		 * Legacy fallback — tours saved before the gallery restructure still
+		 * hold their slides in the old `slides` repeater meta until the
+		 * one-time migration has run.
 		 */
-		$raw_slides = get_field( 'slides', $post_id );
-		$slides     = array();
-		if ( is_array( $raw_slides ) ) {
-			$index = 1;
-			foreach ( $raw_slides as $slide ) {
-				$slide['slide_index'] = $index;
-				$slides[]             = $slide;
-				$index++;
+		if ( empty( $slides ) ) {
+			$legacy = self::get_legacy_tour_structure( $post_id );
+			if ( ! empty( $legacy['slides'] ) ) {
+				$slides         = $legacy['slides'];
+				$nav_categories = $legacy['nav_categories'];
 			}
 		}
 
@@ -286,6 +301,114 @@ class H3VT_Tours_Renderer {
 			),
 			'contact'         => $contact,
 		);
+	}
+
+	/**
+	 * Convert an ACF gallery image array into the slide structure the
+	 * renderer, REST API, and embeds consume.
+	 *
+	 * @param array  $image ACF attachment array (return_format "array").
+	 * @param string $label Navigation category label the image belongs to.
+	 * @param int    $index 1-based slide index.
+	 * @return array
+	 */
+	private static function gallery_image_to_slide( $image, $label, $index ) {
+		$att_id = isset( $image['ID'] ) ? (int) $image['ID'] : 0;
+
+		$floorplan = '';
+		$hotspot_x = '';
+		$hotspot_y = '';
+		if ( $att_id ) {
+			$floorplan = get_field( 'slide_floorplan', $att_id );
+			$hotspot_x = get_field( 'slide_hotspot_x', $att_id );
+			$hotspot_y = get_field( 'slide_hotspot_y', $att_id );
+		}
+
+		return array(
+			'slide_image'        => $image,
+			'slide_title'        => isset( $image['title'] ) ? $image['title'] : '',
+			'slide_description'  => isset( $image['caption'] ) ? $image['caption'] : '',
+			'slide_nav_category' => $label,
+			'slide_floorplan'    => ( null === $floorplan || false === $floorplan ) ? '' : $floorplan,
+			'slide_hotspot_x'    => ( null === $hotspot_x || false === $hotspot_x ) ? '' : $hotspot_x,
+			'slide_hotspot_y'    => ( null === $hotspot_y || false === $hotspot_y ) ? '' : $hotspot_y,
+			'slide_index'        => $index,
+		);
+	}
+
+	/**
+	 * Read the pre-gallery tour structure straight from raw meta: the old
+	 * `slides` repeater rows and `nav_categories` rows sorted by the old
+	 * nav_order sub-field. Used only until the one-time migration has
+	 * rewritten the post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array { nav_categories: array, slides: array }
+	 */
+	private static function get_legacy_tour_structure( $post_id ) {
+		$result = array(
+			'nav_categories' => array(),
+			'slides'         => array(),
+		);
+
+		// Once migrated, the old repeater meta is only a backup — never
+		// resurrect it, even if every gallery has been emptied since.
+		if ( get_post_meta( $post_id, '_h3vt_gallery_migrated', true ) ) {
+			return $result;
+		}
+
+		$slide_count = (int) get_post_meta( $post_id, 'slides', true );
+		if ( $slide_count < 1 ) {
+			return $result;
+		}
+
+		// Categories with their legacy sort order.
+		$cat_count = (int) get_post_meta( $post_id, 'nav_categories', true );
+		$rows      = array();
+		for ( $i = 0; $i < $cat_count; $i++ ) {
+			$label = get_post_meta( $post_id, "nav_categories_{$i}_nav_label", true );
+			if ( '' === $label ) {
+				continue;
+			}
+			$rows[] = array(
+				'nav_label' => $label,
+				'nav_order' => (int) get_post_meta( $post_id, "nav_categories_{$i}_nav_order", true ),
+				'position'  => $i,
+			);
+		}
+		usort( $rows, function ( $a, $b ) {
+			if ( $a['nav_order'] === $b['nav_order'] ) {
+				return $a['position'] - $b['position'];
+			}
+			return $a['nav_order'] - $b['nav_order'];
+		} );
+		foreach ( $rows as $row ) {
+			$result['nav_categories'][] = array( 'nav_label' => $row['nav_label'] );
+		}
+
+		// Slides.
+		$index = 1;
+		for ( $i = 0; $i < $slide_count; $i++ ) {
+			$att_id = (int) get_post_meta( $post_id, "slides_{$i}_slide_image", true );
+			$image  = ( $att_id && function_exists( 'acf_get_attachment' ) ) ? acf_get_attachment( $att_id ) : false;
+			if ( ! $image ) {
+				continue;
+			}
+
+			$result['slides'][] = array(
+				'slide_image'        => $image,
+				'slide_title'        => get_post_meta( $post_id, "slides_{$i}_slide_title", true ),
+				'slide_description'  => get_post_meta( $post_id, "slides_{$i}_slide_description", true ),
+				'slide_nav_category' => get_post_meta( $post_id, "slides_{$i}_slide_nav_category", true ),
+				'slide_floorplan'    => get_post_meta( $post_id, "slides_{$i}_slide_floorplan", true ),
+				'slide_hotspot_x'    => get_post_meta( $post_id, "slides_{$i}_slide_hotspot_x", true ),
+				'slide_hotspot_y'    => get_post_meta( $post_id, "slides_{$i}_slide_hotspot_y", true ),
+				'slide_index'        => $index,
+			);
+			$index++;
+		}
+
+		return $result;
 	}
 
 	/**

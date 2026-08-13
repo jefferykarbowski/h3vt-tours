@@ -39,6 +39,7 @@ class H3VT_Tours_Hotspot_Editor {
 		$post_id = isset( $_GET['post'] ) ? absint( $_GET['post'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		$floorplans = array();
+		$hotspots   = array();
 		if ( $post_id ) {
 			$raw = get_field( 'floorplans', $post_id );
 			if ( is_array( $raw ) ) {
@@ -51,6 +52,33 @@ class H3VT_Tours_Hotspot_Editor {
 						'index' => $i,
 						'label' => isset( $fp['floorplan_label'] ) ? $fp['floorplan_label'] : '',
 						'image' => $img_url,
+					);
+				}
+			}
+
+			// Saved hotspot placements for every gallery image, so the
+			// sidebar editor can show the other slides' dots for context.
+			$cat_count = (int) get_post_meta( $post_id, 'nav_categories', true );
+			for ( $i = 0; $i < $cat_count; $i++ ) {
+				$gallery = get_post_meta( $post_id, "nav_categories_{$i}_nav_gallery", true );
+				if ( empty( $gallery ) || ! is_array( $gallery ) ) {
+					continue;
+				}
+				foreach ( $gallery as $att_id ) {
+					$att_id = (int) $att_id;
+					if ( ! $att_id || isset( $hotspots[ $att_id ] ) ) {
+						continue;
+					}
+					$fp_index = get_post_meta( $att_id, 'slide_floorplan', true );
+					$hs_x     = get_post_meta( $att_id, 'slide_hotspot_x', true );
+					$hs_y     = get_post_meta( $att_id, 'slide_hotspot_y', true );
+					if ( '' === $fp_index || '' === $hs_x || '' === $hs_y ) {
+						continue;
+					}
+					$hotspots[ $att_id ] = array(
+						'floorplan' => (string) $fp_index,
+						'x'         => floatval( $hs_x ),
+						'y'         => floatval( $hs_y ),
 					);
 				}
 			}
@@ -73,6 +101,7 @@ class H3VT_Tours_Hotspot_Editor {
 
 		wp_localize_script( 'h3vt-hotspot-editor', 'h3vtHotspotData', array(
 			'floorplans' => $floorplans,
+			'hotspots'   => $hotspots,
 		) );
 	}
 }

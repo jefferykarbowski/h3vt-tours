@@ -19,7 +19,6 @@ class H3VT_Tours_ACF {
 	 */
 	public function __construct() {
 		add_action( 'acf/init', array( $this, 'register_fields' ) );
-		add_filter( 'acf/load_field/name=slide_nav_category', array( $this, 'populate_nav_categories' ) );
 		add_filter( 'acf/load_field/name=slide_floorplan', array( $this, 'populate_floorplan_choices' ) );
 		add_filter( 'acf/load_field/name=theme', array( $this, 'populate_theme_choices' ) );
 		add_action( 'wp_insert_post', array( $this, 'set_default_nav_categories' ), 10, 3 );
@@ -28,15 +27,18 @@ class H3VT_Tours_ACF {
 	/**
 	 * Default navigation categories applied to every new tour.
 	 *
+	 * Row order in this array is the display order — categories are
+	 * reordered by dragging repeater rows in the editor.
+	 *
 	 * @return array
 	 */
 	public static function get_default_nav_categories() {
 		return array(
-			array( 'nav_label' => 'Resident Rooms',        'nav_order' => 10 ),
-			array( 'nav_label' => 'Common Areas',          'nav_order' => 20 ),
-			array( 'nav_label' => 'Activity Rooms',        'nav_order' => 30 ),
-			array( 'nav_label' => 'Dining / Living Areas', 'nav_order' => 40 ),
-			array( 'nav_label' => 'Outdoor Areas',         'nav_order' => 50 ),
+			array( 'nav_label' => 'Resident Rooms' ),
+			array( 'nav_label' => 'Common Areas' ),
+			array( 'nav_label' => 'Activity Rooms' ),
+			array( 'nav_label' => 'Dining / Living Areas' ),
+			array( 'nav_label' => 'Outdoor Areas' ),
 		);
 	}
 
@@ -76,7 +78,8 @@ class H3VT_Tours_ACF {
 		$this->register_template_selector();
 		$this->register_tour_settings();
 		$this->register_template_fields();
-		$this->register_navigation_slides();
+		$this->register_navigation_galleries();
+		$this->register_attachment_fields();
 		$this->register_testimonials();
 		$this->register_floorplans();
 		$this->register_embedded_tours();
@@ -415,20 +418,28 @@ class H3VT_Tours_ACF {
 	}
 
 	/**
-	 * Group 2: Navigation + Slides.
+	 * Group 2: Navigation + Galleries.
+	 *
+	 * Each navigation category row carries its own gallery — adding a
+	 * category adds its gallery, removing it removes the gallery, and
+	 * images are reordered by dragging inside the gallery grid. Slide
+	 * Title, Description, and Floorplan Hotspot are edited per image in
+	 * the gallery sidebar (Edit Image form).
 	 */
-	private function register_navigation_slides() {
+	private function register_navigation_galleries() {
 		acf_add_local_field_group( array(
 			'key'      => 'group_h3vt_navigation',
-			'title'    => 'Navigation + Slides',
+			'title'    => 'Navigation + Galleries',
 			'fields'   => array(
 				array(
 					'key'          => 'field_h3vt_navigation_nav_categories',
 					'label'        => 'Navigation Categories',
 					'name'         => 'nav_categories',
 					'type'         => 'repeater',
-					'layout'       => 'table',
+					'layout'       => 'block',
 					'button_label' => 'Add Category',
+					'collapsed'    => 'field_h3vt_navigation_nav_label',
+					'instructions' => 'Drag rows to reorder categories. Drag images inside a gallery to reorder slides. Click an image in a gallery to edit its Title, Description, and Floorplan Hotspot.',
 					'sub_fields'   => array(
 						array(
 							'key'      => 'field_h3vt_navigation_nav_label',
@@ -438,81 +449,15 @@ class H3VT_Tours_ACF {
 							'required' => 1,
 						),
 						array(
-							'key'           => 'field_h3vt_navigation_nav_order',
-							'label'         => 'Order',
-							'name'          => 'nav_order',
-							'type'          => 'number',
-							'default_value' => 0,
-						),
-					),
-				),
-				array(
-					'key'          => 'field_h3vt_navigation_slides',
-					'label'        => 'Slides',
-					'name'         => 'slides',
-					'type'         => 'repeater',
-					'layout'       => 'block',
-					'button_label' => 'Add Slide',
-					'sub_fields'   => array(
-						array(
-							'key'           => 'field_h3vt_navigation_slide_image',
-							'label'         => 'Image',
-							'name'          => 'slide_image',
-							'type'          => 'image',
+							'key'           => 'field_h3vt_navigation_nav_gallery',
+							'label'         => 'Gallery',
+							'name'          => 'nav_gallery',
+							'type'          => 'gallery',
 							'return_format' => 'array',
-							'required'      => 1,
-						),
-						array(
-							'key'   => 'field_h3vt_navigation_slide_title',
-							'label' => 'Title',
-							'name'  => 'slide_title',
-							'type'  => 'text',
-						),
-						array(
-							'key'   => 'field_h3vt_navigation_slide_description',
-							'label' => 'Description',
-							'name'  => 'slide_description',
-							'type'  => 'textarea',
-							'rows'  => 2,
-						),
-						array(
-							'key'     => 'field_h3vt_navigation_slide_nav_category',
-							'label'   => 'Category',
-							'name'    => 'slide_nav_category',
-							'type'    => 'select',
-							'choices' => array(),
-						),
-						array(
-							'key'          => 'field_h3vt_navigation_slide_floorplan',
-							'label'        => 'Floorplan Hotspot',
-							'name'         => 'slide_floorplan',
-							'type'         => 'select',
-							'choices'      => array(),
-							'instructions' => 'Select a floor plan to place this slide\'s hotspot on.',
-							'allow_null'   => 1,
-							'wrapper'      => array( 'class' => 'h3vt-hotspot-floorplan-select' ),
-						),
-						array(
-							'key'     => 'field_h3vt_navigation_slide_hotspot_x',
-							'label'   => 'Hotspot X',
-							'name'    => 'slide_hotspot_x',
-							'type'    => 'number',
-							'min'     => 0,
-							'max'     => 100,
-							'step'    => 0.1,
-							'append'  => '%',
-							'wrapper' => array( 'class' => 'h3vt-hotspot-x-field' ),
-						),
-						array(
-							'key'     => 'field_h3vt_navigation_slide_hotspot_y',
-							'label'   => 'Hotspot Y',
-							'name'    => 'slide_hotspot_y',
-							'type'    => 'number',
-							'min'     => 0,
-							'max'     => 100,
-							'step'    => 0.1,
-							'append'  => '%',
-							'wrapper' => array( 'class' => 'h3vt-hotspot-y-field' ),
+							'preview_size'  => 'thumbnail',
+							'insert'        => 'append',
+							'library'       => 'all',
+							'button_label'  => 'Add Images',
 						),
 					),
 				),
@@ -527,6 +472,62 @@ class H3VT_Tours_ACF {
 				),
 			),
 			'menu_order' => 10,
+		) );
+	}
+
+	/**
+	 * Attachment fields — floorplan hotspot placement, edited per image
+	 * inside the gallery sidebar (Edit Image form). Title and Description
+	 * use the native attachment Title and Caption fields shown in the
+	 * same sidebar.
+	 */
+	private function register_attachment_fields() {
+		acf_add_local_field_group( array(
+			'key'      => 'group_h3vt_attachment',
+			'title'    => 'Tour Slide',
+			'fields'   => array(
+				array(
+					'key'          => 'field_h3vt_attachment_slide_floorplan',
+					'label'        => 'Floorplan Hotspot',
+					'name'         => 'slide_floorplan',
+					'type'         => 'select',
+					'choices'      => array(),
+					'instructions' => 'Select a floor plan to place this slide\'s hotspot on.',
+					'allow_null'   => 1,
+					'wrapper'      => array( 'class' => 'h3vt-hotspot-floorplan-select' ),
+				),
+				array(
+					'key'     => 'field_h3vt_attachment_slide_hotspot_x',
+					'label'   => 'Hotspot X',
+					'name'    => 'slide_hotspot_x',
+					'type'    => 'number',
+					'min'     => 0,
+					'max'     => 100,
+					'step'    => 0.1,
+					'append'  => '%',
+					'wrapper' => array( 'class' => 'h3vt-hotspot-x-field' ),
+				),
+				array(
+					'key'     => 'field_h3vt_attachment_slide_hotspot_y',
+					'label'   => 'Hotspot Y',
+					'name'    => 'slide_hotspot_y',
+					'type'    => 'number',
+					'min'     => 0,
+					'max'     => 100,
+					'step'    => 0.1,
+					'append'  => '%',
+					'wrapper' => array( 'class' => 'h3vt-hotspot-y-field' ),
+				),
+			),
+			'location' => array(
+				array(
+					array(
+						'param'    => 'attachment',
+						'operator' => '==',
+						'value'    => 'image',
+					),
+				),
+			),
 		) );
 	}
 
@@ -928,48 +929,12 @@ class H3VT_Tours_ACF {
 	}
 
 	/**
-	 * Dynamically populate the slide_nav_category select field with the
-	 * nav_categories repeater labels from the current post.
-	 *
-	 * @param array $field ACF field config.
-	 * @return array
-	 */
-	public function populate_nav_categories( $field ) {
-		$post_id = 0;
-
-		if ( isset( $_GET['post'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$post_id = absint( $_GET['post'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		} elseif ( isset( $_POST['post_id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			$post_id = absint( $_POST['post_id'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		}
-
-		if ( ! $post_id ) {
-			return $field;
-		}
-
-		$categories = get_field( 'nav_categories', $post_id );
-
-		if ( empty( $categories ) || ! is_array( $categories ) ) {
-			$field['choices'] = array();
-			return $field;
-		}
-
-		$choices = array();
-		foreach ( $categories as $category ) {
-			if ( ! empty( $category['nav_label'] ) ) {
-				$label             = sanitize_text_field( $category['nav_label'] );
-				$choices[ $label ] = $label;
-			}
-		}
-
-		$field['choices'] = $choices;
-
-		return $field;
-	}
-
-	/**
 	 * Dynamically populate the slide_floorplan select field with the
-	 * floorplans repeater labels from the current post.
+	 * floorplans repeater labels from the tour the image belongs to.
+	 *
+	 * The field now lives on attachments and renders inside the gallery
+	 * sidebar, so the tour is resolved from (in order): the edit-screen
+	 * post, the AJAX post_id, or the attachment's parent post.
 	 *
 	 * @param array $field ACF field config.
 	 * @return array
@@ -983,7 +948,13 @@ class H3VT_Tours_ACF {
 			$post_id = absint( $_POST['post_id'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 
-		if ( ! $post_id ) {
+		// Attachment context (media modal / gallery sidebar) — use the
+		// image's parent tour.
+		if ( $post_id && 'attachment' === get_post_type( $post_id ) ) {
+			$post_id = (int) wp_get_post_parent_id( $post_id );
+		}
+
+		if ( ! $post_id || 'h3vt_tour' !== get_post_type( $post_id ) ) {
 			return $field;
 		}
 
