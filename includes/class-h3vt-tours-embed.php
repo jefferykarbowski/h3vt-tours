@@ -42,7 +42,7 @@ class H3VT_Tours_Embed {
 
 		if ( strpos( $route, '/h3vt-tours/' ) === 0 ) {
 			header( 'Access-Control-Allow-Origin: *' );
-			header( 'Access-Control-Allow-Methods: GET' );
+			header( 'Access-Control-Allow-Methods: GET, POST, OPTIONS' );
 			header( 'Access-Control-Allow-Headers: Content-Type' );
 		}
 

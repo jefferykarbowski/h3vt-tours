@@ -66,6 +66,13 @@ class H3VT_Tours_Renderer {
 				'tiktok'    => get_field( 'social_tiktok', $template_id ) ?: '',
 				'pinterest' => get_field( 'social_pinterest', $template_id ) ?: '',
 			);
+			$exit_intent            = array(
+				'enabled'     => (bool) get_field( 'exit_intent_enabled', $template_id ),
+				'headline'    => get_field( 'exit_intent_headline', $template_id ) ?: __( 'Wait — before you go!', 'h3vt-tours' ),
+				'message'     => get_field( 'exit_intent_message', $template_id ) ?: __( 'Leave your details and our team will reach out right away with pricing, availability, and answers to all of your questions.', 'h3vt-tours' ),
+				'button_text' => get_field( 'exit_intent_button_text', $template_id ) ?: __( 'Request More Info', 'h3vt-tours' ),
+				'tour_id'     => $post_id,
+			);
 		} else {
 			$primary_color_raw      = '#FF6B00';
 			$secondary_color_raw    = '#1A1A1A';
@@ -81,6 +88,12 @@ class H3VT_Tours_Renderer {
 			$pdf_file               = null;
 			$pdf_button_text        = __( 'Brochure', 'h3vt-tours' );
 			$socials                = array();
+			$exit_intent            = array(
+				'enabled'     => false,
+				'headline'    => '',
+				'message'     => '',
+				'button_text' => '',
+			);
 		}
 
 		/*
@@ -139,9 +152,11 @@ class H3VT_Tours_Renderer {
 			'button_style'     => $button_style,
 			'autoplay_speed'   => $autoplay_speed,
 			'theme'            => $theme,
+			'nav_mode'         => H3VT_Tours_Theme_Loader::get_theme_option( $theme, 'nav_mode', 'dropdown' ),
 			'pdf_file'         => $pdf_file,
 			'pdf_button_text'  => $pdf_button_text,
 			'socials'          => array_filter( $socials ),
+			'exit_intent'      => $exit_intent,
 		);
 
 		/*
@@ -457,7 +472,8 @@ class H3VT_Tours_Renderer {
 		?>
 		<div class="h3vt-tour<?php echo $theme_class; ?>"
 			style="--h3vt-button-bg:<?php echo $button_bg; ?>;--h3vt-header-bg:<?php echo $header_bg; ?>;--h3vt-text:<?php echo $text; ?><?php echo $extra_css; ?>"
-			data-autoplay-speed="<?php echo esc_attr( $speed_ms ); ?>">
+			data-autoplay-speed="<?php echo esc_attr( $speed_ms ); ?>"
+			data-nav-mode="<?php echo esc_attr( $data['settings']['nav_mode'] ); ?>">
 			<?php
 			self::render_header( $data );
 			self::render_slides( $data );
@@ -481,8 +497,9 @@ class H3VT_Tours_Renderer {
 	 * @param array $data Tour data.
 	 */
 	private static function render_header( $data ) {
-		$logo    = $data['settings']['logo'];
-		$address = $data['settings']['tour_address'];
+		$logo     = $data['settings']['logo'];
+		$address  = $data['settings']['tour_address'];
+		$nav_mode = $data['settings']['nav_mode'];
 		?>
 		<header class="h3vt-tour__header">
 			<?php if ( ! empty( $logo ) && is_array( $logo ) ) : ?>
@@ -499,25 +516,25 @@ class H3VT_Tours_Renderer {
 			<?php endif; ?>
 
 			<nav class="h3vt-tour__nav">
-				<?php foreach ( $data['nav_categories'] as $category ) : ?>
+				<?php foreach ( $data['nav_categories'] as $ci => $category ) : ?>
 					<div class="h3vt-tour__nav-item">
-						<button class="h3vt-tour__nav-button">
-							<?php echo esc_html( $category['nav_label'] ); ?>
-							<svg viewBox="0 0 12 8" class="h3vt-tour__nav-chevron"><polyline points="1 1 6 6 11 1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-						</button>
-						<div class="h3vt-tour__dropdown">
-							<?php
-							foreach ( $data['slides'] as $slide ) :
-								$slide_category = isset( $slide['slide_nav_category'] ) ? $slide['slide_nav_category'] : '';
-								if ( $slide_category !== $category['nav_label'] ) {
-									continue;
-								}
-								?>
-								<button class="h3vt-tour__dropdown-item" data-slide-index="<?php echo esc_attr( $slide['slide_index'] ); ?>">
-									<?php echo esc_html( $slide['slide_title'] ); ?>
-								</button>
-							<?php endforeach; ?>
-						</div>
+						<?php if ( 'modal' === $nav_mode ) : ?>
+							<button class="h3vt-tour__nav-button" data-nav-modal="nav-<?php echo esc_attr( $ci ); ?>">
+								<?php echo esc_html( $category['nav_label'] ); ?>
+							</button>
+						<?php else : ?>
+							<button class="h3vt-tour__nav-button">
+								<?php echo esc_html( $category['nav_label'] ); ?>
+								<svg viewBox="0 0 12 8" class="h3vt-tour__nav-chevron"><polyline points="1 1 6 6 11 1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+							</button>
+							<div class="h3vt-tour__dropdown">
+								<?php foreach ( self::get_category_slides( $data, $category ) as $slide ) : ?>
+									<button class="h3vt-tour__dropdown-item" data-slide-index="<?php echo esc_attr( $slide['slide_index'] ); ?>">
+										<?php echo esc_html( $slide['slide_title'] ); ?>
+									</button>
+								<?php endforeach; ?>
+							</div>
+						<?php endif; ?>
 					</div>
 				<?php endforeach; ?>
 			</nav>
@@ -531,6 +548,24 @@ class H3VT_Tours_Renderer {
 			</button>
 		</header>
 		<?php
+	}
+
+	/**
+	 * Slides assigned to a nav category, in slide order.
+	 *
+	 * @param array $data     Tour data.
+	 * @param array $category Nav category row.
+	 * @return array
+	 */
+	private static function get_category_slides( $data, $category ) {
+		$label = isset( $category['nav_label'] ) ? $category['nav_label'] : '';
+
+		$matches = array_filter( $data['slides'], function ( $slide ) use ( $label ) {
+			$slide_category = isset( $slide['slide_nav_category'] ) ? $slide['slide_nav_category'] : '';
+			return $slide_category === $label;
+		} );
+
+		return array_values( $matches );
 	}
 
 	/* ------------------------------------------------------------------
@@ -745,6 +780,12 @@ class H3VT_Tours_Renderer {
 	 * @param array $data Tour data.
 	 */
 	private static function render_modals( $data ) {
+		if ( 'modal' === $data['settings']['nav_mode'] ) {
+			foreach ( $data['nav_categories'] as $ci => $category ) {
+				self::render_nav_modal( $ci, $category, $data );
+			}
+		}
+
 		if ( $data['testimonials']['enabled'] && ! empty( $data['testimonials']['items'] ) ) {
 			self::render_testimonials_modal( $data );
 		}
@@ -774,6 +815,126 @@ class H3VT_Tours_Renderer {
 		if ( ! empty( $data['settings']['pdf_file'] ) ) {
 			self::render_pdf_modal( $data );
 		}
+
+		if ( ! empty( $data['settings']['exit_intent']['enabled'] ) ) {
+			self::render_exit_intent_modal( $data );
+		}
+	}
+
+	/**
+	 * Exit-intent lead-capture modal.
+	 *
+	 * Hidden until the front-end JS detects the visitor moving to leave the
+	 * page; the form posts to the exit-intent REST endpoint, which emails
+	 * the lead to the marketing team.
+	 *
+	 * @param array $data Tour data.
+	 */
+	private static function render_exit_intent_modal( $data ) {
+		$exit     = $data['settings']['exit_intent'];
+		$endpoint = rest_url( 'h3vt-tours/v1/exit-intent' );
+		?>
+		<div class="h3vt-tour__modal h3vt-tour__modal--exit" data-modal-name="exit-intent" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr( $exit['headline'] ); ?>" hidden>
+			<div class="h3vt-tour__modal-backdrop"></div>
+			<div class="h3vt-tour__modal-content">
+				<button class="h3vt-tour__modal-close" aria-label="<?php esc_attr_e( 'Close', 'h3vt-tours' ); ?>">&times;</button>
+
+				<h3 class="h3vt-tour__exit-headline"><?php echo esc_html( $exit['headline'] ); ?></h3>
+				<p class="h3vt-tour__exit-message"><?php echo esc_html( $exit['message'] ); ?></p>
+
+				<form class="h3vt-tour__exit-form" action="<?php echo esc_url( $endpoint ); ?>" method="post" novalidate>
+					<input type="hidden" name="tour_id" value="<?php echo esc_attr( $exit['tour_id'] ); ?>">
+					<?php /* Honeypot — hidden from humans, bots fill it in. */ ?>
+					<input type="text" name="company_website" class="h3vt-tour__exit-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+					<label class="h3vt-tour__exit-field">
+						<span><?php esc_html_e( 'Name', 'h3vt-tours' ); ?></span>
+						<input type="text" name="name" required autocomplete="name">
+					</label>
+					<label class="h3vt-tour__exit-field">
+						<span><?php esc_html_e( 'Email', 'h3vt-tours' ); ?></span>
+						<input type="email" name="email" required autocomplete="email">
+					</label>
+					<label class="h3vt-tour__exit-field">
+						<span><?php esc_html_e( 'Phone (optional)', 'h3vt-tours' ); ?></span>
+						<input type="tel" name="phone" autocomplete="tel">
+					</label>
+
+					<p class="h3vt-tour__exit-error" hidden><?php esc_html_e( 'Something went wrong — please try again.', 'h3vt-tours' ); ?></p>
+
+					<button type="submit" class="h3vt-tour__exit-submit">
+						<?php echo esc_html( $exit['button_text'] ); ?>
+					</button>
+					<button type="button" class="h3vt-tour__exit-dismiss">
+						<?php esc_html_e( 'No thanks, keep exploring', 'h3vt-tours' ); ?>
+					</button>
+				</form>
+
+				<div class="h3vt-tour__exit-success" hidden>
+					<h3 class="h3vt-tour__exit-headline"><?php esc_html_e( 'Thank you!', 'h3vt-tours' ); ?></h3>
+					<p class="h3vt-tour__exit-message"><?php esc_html_e( 'Our team will be in touch with you shortly.', 'h3vt-tours' ); ?></p>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Nav category gallery modal — the dropdown replacement used by themes
+	 * that set nav_mode => 'modal'.
+	 *
+	 * Shows one slide of the category at a time, captioned with its title,
+	 * with prev/next arrows as the only way through. Categories with no
+	 * slides render nothing; their nav button then opens nothing, matching
+	 * the empty dropdown it replaces.
+	 *
+	 * @param int   $index    Category index; pairs with the nav button's data-nav-modal.
+	 * @param array $category Nav category row.
+	 * @param array $data     Tour data.
+	 */
+	private static function render_nav_modal( $index, $category, $data ) {
+		$slides = self::get_category_slides( $data, $category );
+
+		if ( empty( $slides ) ) {
+			return;
+		}
+
+		$label = isset( $category['nav_label'] ) ? $category['nav_label'] : '';
+		?>
+		<div class="h3vt-tour__modal h3vt-tour__modal--nav" data-modal-name="nav-<?php echo esc_attr( $index ); ?>" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr( $label ); ?>" hidden>
+			<div class="h3vt-tour__modal-backdrop"></div>
+			<div class="h3vt-tour__modal-content">
+				<button class="h3vt-tour__modal-close" aria-label="<?php esc_attr_e( 'Close', 'h3vt-tours' ); ?>">&times;</button>
+				<div class="h3vt-tour__nav-gallery">
+					<?php foreach ( $slides as $si => $slide ) : ?>
+						<?php
+						$img   = ! empty( $slide['slide_image'] ) && is_array( $slide['slide_image'] ) ? $slide['slide_image'] : array();
+						$title = ! empty( $slide['slide_title'] ) ? $slide['slide_title'] : '';
+						?>
+						<figure class="h3vt-tour__nav-slide<?php echo 0 === $si ? ' h3vt-tour__nav-slide--active' : ''; ?>" data-index="<?php echo esc_attr( $si ); ?>">
+							<?php if ( ! empty( $img['url'] ) ) : ?>
+								<img src="<?php echo esc_url( $img['url'] ); ?>"
+									alt="<?php echo esc_attr( ! empty( $img['alt'] ) ? $img['alt'] : $title ); ?>"
+									<?php echo 0 === $si ? '' : 'loading="lazy"'; ?>>
+							<?php endif; ?>
+							<?php if ( $title ) : ?>
+								<figcaption class="h3vt-tour__nav-slide-caption"><?php echo esc_html( $title ); ?></figcaption>
+							<?php endif; ?>
+						</figure>
+					<?php endforeach; ?>
+
+					<?php if ( count( $slides ) > 1 ) : ?>
+						<button class="h3vt-tour__nav-gallery-arrow h3vt-tour__nav-gallery-arrow--prev" data-nav-gallery="prev" aria-label="<?php esc_attr_e( 'Previous', 'h3vt-tours' ); ?>">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 4 7 12 15 20"/></svg>
+						</button>
+						<button class="h3vt-tour__nav-gallery-arrow h3vt-tour__nav-gallery-arrow--next" data-nav-gallery="next" aria-label="<?php esc_attr_e( 'Next', 'h3vt-tours' ); ?>">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 4 17 12 9 20"/></svg>
+						</button>
+					<?php endif; ?>
+				</div>
+			</div>
+		</div>
+		<?php
 	}
 
 	/**
