@@ -58,6 +58,7 @@ class H3VT_Tours {
 		require_once $dir . 'class-h3vt-tours-hotspot-editor.php';
 		require_once $dir . 'class-h3vt-tours-embed-metabox.php';
 		require_once $dir . 'class-h3vt-tours-media-filter.php';
+		require_once $dir . 'class-h3vt-tours-migration.php';
 		require_once $dir . 'class-h3vt-tours-3dvista-converter.php';
 	}
 
@@ -72,6 +73,7 @@ class H3VT_Tours {
 		new H3VT_Tours_REST_API();
 		new H3VT_Tours_Embed();
 		new H3VT_Tours_Media_Filter();
+		new H3VT_Tours_Migration();
 
 		if ( is_admin() ) {
 			new H3VT_Tours_Hotspot_Editor();

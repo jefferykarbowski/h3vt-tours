@@ -1571,16 +1571,6 @@ class H3VT_Tours_3DVista_Converter {
 			update_field( 'hero_image', $first['id'], $tour_id );
 		}
 
-		// Navigation categories — every imported tour uses the standard
-		// predetermined set so the nav structure is consistent. 3DVista's
-		// own category grouping is intentionally not used.
-		update_field( 'nav_categories', H3VT_Tours_ACF::get_default_nav_categories(), $tour_id );
-
-		// Slides repeater.
-		$slide_count = count( $attachment_ids );
-		update_post_meta( $tour_id, 'slides', $slide_count );
-		update_post_meta( $tour_id, '_slides', 'field_h3vt_navigation_slides' );
-
 		// Pre-scan for duplicate titles so we can append numbers.
 		$title_counts = array();
 		foreach ( $attachment_ids as $att ) {
@@ -1598,8 +1588,18 @@ class H3VT_Tours_3DVista_Converter {
 		}
 		$title_seen = array(); // track how many times we've output each title
 
+		// Navigation categories — every imported tour starts from the
+		// standard predetermined set so the nav structure is consistent
+		// (3DVista's own category grouping is intentionally not used).
+		// Each slide is appended to its category's gallery; the slide
+		// title and description are stored on the attachment itself so
+		// they're editable in the gallery's Edit Image form.
+		$grouped = array();
+		foreach ( H3VT_Tours_ACF::get_default_nav_categories() as $row ) {
+			$grouped[ $row['nav_label'] ] = array();
+		}
+
 		foreach ( $attachment_ids as $i => $att ) {
-			$prefix   = "slides_{$i}_";
 			$filename = $att['filename'];
 
 			// Look up metadata for this image.
@@ -1622,34 +1622,39 @@ class H3VT_Tours_3DVista_Converter {
 				$title .= ' ' . $title_seen[ $title ];
 			}
 
-			update_post_meta( $tour_id, "{$prefix}slide_title", $title );
-			update_post_meta( $tour_id, "_{$prefix}slide_title", 'field_h3vt_navigation_slide_title' );
-
 			// Slide description: from metadata or empty.
 			$description = ( $photo_meta && '' !== $photo_meta['description'] )
 				? $photo_meta['description']
 				: '';
 
-			update_post_meta( $tour_id, "{$prefix}slide_description", $description );
-			update_post_meta( $tour_id, "_{$prefix}slide_description", 'field_h3vt_navigation_slide_description' );
+			wp_update_post( array(
+				'ID'           => $att['id'],
+				'post_title'   => $title,
+				'post_excerpt' => $description,
+			) );
 
 			// Slide category: an explicit form-supplied default wins;
-			// otherwise auto-detect from the slide title and description.
+			// otherwise auto-detect from the slide title.
 			if ( ! empty( $default_category ) ) {
 				$category = $default_category;
 			} else {
 				$category = $this->guess_slide_category( $title );
 			}
 
-			if ( '' !== $category ) {
-				update_post_meta( $tour_id, "{$prefix}slide_nav_category", $category );
-				update_post_meta( $tour_id, "_{$prefix}slide_nav_category", 'field_h3vt_navigation_slide_nav_category' );
+			if ( ! isset( $grouped[ $category ] ) ) {
+				$grouped[ $category ] = array();
 			}
-
-			// Store the real attachment ID — ACF validates this natively.
-			update_post_meta( $tour_id, "{$prefix}slide_image", $att['id'] );
-			update_post_meta( $tour_id, "_{$prefix}slide_image", 'field_h3vt_navigation_slide_image' );
+			$grouped[ $category ][] = $att['id'];
 		}
+
+		$category_rows = array();
+		foreach ( $grouped as $label => $ids ) {
+			$category_rows[] = array(
+				'nav_label'   => $label,
+				'nav_gallery' => $ids,
+			);
+		}
+		update_field( 'field_h3vt_navigation_nav_categories', $category_rows, $tour_id );
 
 		// Floor plans.
 		if ( ! empty( $floorplan_atts ) && ! empty( $metadata['floorplans'] ) ) {

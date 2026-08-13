@@ -21,7 +21,6 @@
 	const H3VT_FIELD_NAMES = [
 		'hero_image',
 		'hero_video',
-		'slide_image',
 		'logo',
 		'icon',
 		'floorplan_image',

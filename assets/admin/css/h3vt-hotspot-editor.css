@@ -51,6 +51,13 @@
 	font-size: 12px;
 }
 
+/* Fill the gallery sidebar column */
+.acf-gallery-side .h3vt-hotspot-editor,
+.acf-gallery-side-data .h3vt-hotspot-editor {
+	max-width: 100%;
+	margin: 8px 0;
+}
+
 /* Hide the raw number fields — the visual editor manages these */
 .h3vt-hotspot-x-field,
 .h3vt-hotspot-y-field {
