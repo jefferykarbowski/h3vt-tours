@@ -262,61 +262,144 @@
 		resetAutoplay();
 
 		/* ---------------------------------------------------------------
-		 * 3. Navigation Dropdowns
+		 * 3. Navigation
+		 *
+		 * Two modes, set per theme via nav_mode: 'dropdown' (default) lists
+		 * a category's slides under the button, 'modal' opens the category
+		 * as a gallery of its slides with prev/next arrows.
 		 * ------------------------------------------------------------- */
+		var navMode  = tourEl.getAttribute( 'data-nav-mode' ) || 'dropdown';
 		var navItems = tourEl.querySelectorAll( '.h3vt-tour__nav-item' );
 
-		navItems.forEach( function ( navItem ) {
-			var btn = navItem.querySelector( 'button, .h3vt-tour__nav-btn' );
-			if ( btn ) {
-				btn.addEventListener( 'click', function ( e ) {
-					e.stopPropagation();
-					var wasOpen = navItem.classList.contains( 'h3vt-tour__nav-item--open' );
-
-					// Close every other open nav item first.
-					navItems.forEach( function ( item ) {
-						item.classList.remove( 'h3vt-tour__nav-item--open' );
-					});
-
-					if ( ! wasOpen ) {
-						navItem.classList.add( 'h3vt-tour__nav-item--open' );
-					}
-				});
+		/**
+		 * Collapse the mobile hamburger menu, if there is one.
+		 */
+		function closeMobileMenu() {
+			if ( ! hamburger ) {
+				return;
 			}
 
-			// Dropdown item click — navigate to the target slide.
-			navItem.querySelectorAll( '[data-slide-index]' ).forEach( function ( link ) {
-				link.addEventListener( 'click', function ( e ) {
-					e.preventDefault();
-					e.stopPropagation();
-					var idx = parseInt( link.getAttribute( 'data-slide-index' ), 10 );
-					if ( ! isNaN( idx ) ) {
-						goToSlide( idx );
-					}
-					navItem.classList.remove( 'h3vt-tour__nav-item--open' );
+			hamburger.classList.remove( 'h3vt-tour__hamburger--open' );
+			hamburger.setAttribute( 'aria-expanded', 'false' );
 
-					// Collapse the mobile hamburger menu.
-					if ( hamburger ) {
-						hamburger.classList.remove( 'h3vt-tour__hamburger--open' );
-						hamburger.setAttribute( 'aria-expanded', 'false' );
-						var header = tourEl.querySelector( '.h3vt-tour__header' );
-						if ( header ) {
-							header.classList.remove( 'h3vt-tour__header--menu-open' );
-						}
+			var header = tourEl.querySelector( '.h3vt-tour__header' );
+			if ( header ) {
+				header.classList.remove( 'h3vt-tour__header--menu-open' );
+			}
+		}
+
+		/**
+		 * Show another slide within a category gallery, wrapping at both ends.
+		 *
+		 * @param {HTMLElement} gallery The gallery root.
+		 * @param {number}      delta   1 for next, -1 for previous.
+		 */
+		function stepNavGallery( gallery, delta ) {
+			var slides = gallery.querySelectorAll( '.h3vt-tour__nav-slide' );
+			if ( slides.length < 2 ) {
+				return;
+			}
+
+			var current = 0;
+			slides.forEach( function ( slide, i ) {
+				if ( slide.classList.contains( 'h3vt-tour__nav-slide--active' ) ) {
+					current = i;
+				}
+			});
+
+			var next = ( current + delta + slides.length ) % slides.length;
+			slides[ current ].classList.remove( 'h3vt-tour__nav-slide--active' );
+			slides[ next ].classList.add( 'h3vt-tour__nav-slide--active' );
+		}
+
+		if ( 'modal' === navMode ) {
+			/**
+			 * Publish the header / bottom-bar heights so the gallery can sit
+			 * in the band between them, leaving both lit and clickable.
+			 */
+			function measureChrome() {
+				var header = tourEl.querySelector( '.h3vt-tour__header' );
+				var bar    = tourEl.querySelector( '.h3vt-tour__bottom-bar' );
+				var top    = header ? header.offsetHeight : 0;
+				var bottom = bar ? bar.offsetHeight : 0;
+
+				// Room for the caption under the photo.
+				var image = Math.max( 160, tourEl.clientHeight - top - bottom - 60 );
+
+				tourEl.style.setProperty( '--h3vt-chrome-top', top + 'px' );
+				tourEl.style.setProperty( '--h3vt-chrome-bottom', bottom + 'px' );
+				tourEl.style.setProperty( '--h3vt-nav-img-max', image + 'px' );
+			}
+
+			measureChrome();
+			window.addEventListener( 'resize', measureChrome );
+
+			// Nav button opens its category gallery, or swaps the open one to it.
+			tourEl.querySelectorAll( '.h3vt-tour__nav-button[data-nav-modal]' ).forEach( function ( btn ) {
+				btn.addEventListener( 'click', function ( e ) {
+					e.stopPropagation();
+					var name = btn.getAttribute( 'data-nav-modal' );
+					openModal( tourEl.querySelector(
+						'.h3vt-tour__modal--nav[data-modal-name="' + name + '"]'
+					) );
+					closeMobileMenu();
+				});
+			});
+
+			// Gallery arrows.
+			tourEl.querySelectorAll( '.h3vt-tour__nav-gallery-arrow' ).forEach( function ( arrow ) {
+				arrow.addEventListener( 'click', function ( e ) {
+					e.stopPropagation();
+					var gallery = arrow.closest( '.h3vt-tour__nav-gallery' );
+					if ( gallery ) {
+						stepNavGallery( gallery, 'next' === arrow.getAttribute( 'data-nav-gallery' ) ? 1 : -1 );
 					}
 				});
 			});
-		});
+		} else {
+			navItems.forEach( function ( navItem ) {
+				var btn = navItem.querySelector( 'button, .h3vt-tour__nav-btn' );
+				if ( btn ) {
+					btn.addEventListener( 'click', function ( e ) {
+						e.stopPropagation();
+						var wasOpen = navItem.classList.contains( 'h3vt-tour__nav-item--open' );
 
-		// Close dropdowns on outside click.
-		document.addEventListener( 'click', function ( e ) {
-			var nav = tourEl.querySelector( '.h3vt-tour__nav' );
-			if ( nav && ! nav.contains( e.target ) ) {
-				navItems.forEach( function ( item ) {
-					item.classList.remove( 'h3vt-tour__nav-item--open' );
+						// Close every other open nav item first.
+						navItems.forEach( function ( item ) {
+							item.classList.remove( 'h3vt-tour__nav-item--open' );
+						});
+
+						if ( ! wasOpen ) {
+							navItem.classList.add( 'h3vt-tour__nav-item--open' );
+						}
+					});
+				}
+
+				// Dropdown item click — navigate to the target slide.
+				navItem.querySelectorAll( '[data-slide-index]' ).forEach( function ( link ) {
+					link.addEventListener( 'click', function ( e ) {
+						e.preventDefault();
+						e.stopPropagation();
+						var idx = parseInt( link.getAttribute( 'data-slide-index' ), 10 );
+						if ( ! isNaN( idx ) ) {
+							goToSlide( idx );
+						}
+						navItem.classList.remove( 'h3vt-tour__nav-item--open' );
+						closeMobileMenu();
+					});
 				});
-			}
-		});
+			});
+
+			// Close dropdowns on outside click.
+			document.addEventListener( 'click', function ( e ) {
+				var nav = tourEl.querySelector( '.h3vt-tour__nav' );
+				if ( nav && ! nav.contains( e.target ) ) {
+					navItems.forEach( function ( item ) {
+						item.classList.remove( 'h3vt-tour__nav-item--open' );
+					});
+				}
+			});
+		}
 
 		/* ---------------------------------------------------------------
 		 * 4. Hamburger Menu (mobile)
@@ -384,6 +467,18 @@
 				return;
 			}
 
+			/*
+			 * Only one overlay at a time. The header stays clickable above an
+			 * open gallery, so this is the path that swaps one nav category
+			 * for another without closing first.
+			 */
+			var current = tourEl.querySelector(
+				'.h3vt-tour__modal:not([hidden]), .h3vt-tour__panel--open'
+			);
+			if ( current && current !== modalEl ) {
+				closeModal( current );
+			}
+
 			// Pause slideshow while modal is open.
 			wasPlaying = isPlaying;
 			clearInterval( autoplayTimer );
@@ -410,6 +505,13 @@
 				if ( e.key === 'Escape' || e.keyCode === 27 ) {
 					e.preventDefault();
 					closeModal( modalEl );
+					return;
+				}
+				// Arrows page a category gallery, mirroring its prev/next arrows.
+				var navGallery = modalEl.querySelector( '.h3vt-tour__nav-gallery' );
+				if ( navGallery && ( e.key === 'ArrowLeft' || e.key === 'ArrowRight' ) ) {
+					e.preventDefault();
+					stepNavGallery( navGallery, e.key === 'ArrowRight' ? 1 : -1 );
 					return;
 				}
 				if ( e.key === 'Tab' || e.keyCode === 9 ) {
@@ -496,6 +598,12 @@
 		 * @param {HTMLElement} modalEl
 		 */
 		function cleanModalContent( modalEl ) {
+			// Rewind a category gallery so it reopens on its first slide.
+			var navSlides = modalEl.querySelectorAll( '.h3vt-tour__nav-slide' );
+			navSlides.forEach( function ( slide, i ) {
+				slide.classList.toggle( 'h3vt-tour__nav-slide--active', 0 === i );
+			});
+
 			// Remove 3D-tour iframes.
 			var tourContainer = modalEl.querySelector( '.h3vt-tour__3dtour-container' );
 			if ( tourContainer ) {
@@ -1026,6 +1134,23 @@
 				return;
 			}
 
+			var openOverlay = tourEl.querySelector(
+				'.h3vt-tour__modal:not([hidden]), .h3vt-tour__panel--open'
+			);
+
+			if ( e.key === 'Escape' ) {
+				if ( openOverlay ) {
+					closeModal( openOverlay );
+				}
+				return;
+			}
+
+			// An open modal owns the keyboard — don't drive the slideshow
+			// underneath it.
+			if ( openOverlay ) {
+				return;
+			}
+
 			switch ( e.key ) {
 				case 'ArrowLeft':
 					prevSlide();
@@ -1036,14 +1161,6 @@
 				case ' ':
 					e.preventDefault();
 					togglePlayPause();
-					break;
-				case 'Escape':
-					var openModal_ = tourEl.querySelector(
-						'.h3vt-tour__modal:not([hidden]), .h3vt-tour__panel--open'
-					);
-					if ( openModal_ ) {
-						closeModal( openModal_ );
-					}
 					break;
 				case 'Home':
 					goToSlide( 0 );
@@ -1102,6 +1219,122 @@
 					voLabel.textContent = voBtn.getAttribute( 'data-play-label' );
 				}
 			});
+		}
+
+		/* ---------------------------------------------------------------
+		 * 14. Exit Intent Popup
+		 *
+		 * Opens the lead-capture modal when the cursor leaves the page
+		 * toward the browser chrome (or leaves the iframe upward when the
+		 * tour is embedded). Fires at most once per session, and never in
+		 * the first few seconds so quick bounces aren't interrupted.
+		 * ------------------------------------------------------------- */
+		var exitModal = tourEl.querySelector( '.h3vt-tour__modal--exit' );
+
+		if ( exitModal ) {
+			var exitStorageKey = 'h3vtExitIntentShown';
+			var exitShown      = false;
+			var exitArmed      = false;
+
+			try {
+				exitShown = sessionStorage.getItem( exitStorageKey ) === '1';
+			} catch ( e ) {}
+
+			setTimeout( function () {
+				exitArmed = true;
+			}, 5000 );
+
+			document.addEventListener( 'mouseout', function ( e ) {
+				if ( exitShown || ! exitArmed ) {
+					return;
+				}
+
+				// Only when the cursor actually leaves the document.
+				if ( e.relatedTarget || e.toElement ) {
+					return;
+				}
+
+				// Heading up toward the tabs / address bar, not off the sides.
+				if ( e.clientY > 24 ) {
+					return;
+				}
+
+				// Don't stack on top of another open modal.
+				if ( tourEl.querySelector( '.h3vt-tour__modal:not([hidden]), .h3vt-tour__panel--open' ) ) {
+					return;
+				}
+
+				exitShown = true;
+				try {
+					sessionStorage.setItem( exitStorageKey, '1' );
+				} catch ( e2 ) {}
+
+				openModal( exitModal );
+			});
+
+			// "No thanks" link closes the modal.
+			var exitDismiss = exitModal.querySelector( '.h3vt-tour__exit-dismiss' );
+			if ( exitDismiss ) {
+				exitDismiss.addEventListener( 'click', function () {
+					closeModal( exitModal );
+				});
+			}
+
+			// Submit the lead to the REST endpoint without leaving the tour.
+			var exitForm = exitModal.querySelector( '.h3vt-tour__exit-form' );
+			if ( exitForm ) {
+				exitForm.addEventListener( 'submit', function ( e ) {
+					e.preventDefault();
+
+					var errorEl  = exitModal.querySelector( '.h3vt-tour__exit-error' );
+					var submitEl = exitForm.querySelector( '.h3vt-tour__exit-submit' );
+					var payload  = {};
+
+					Array.prototype.forEach.call( exitForm.elements, function ( field ) {
+						if ( field.name ) {
+							payload[ field.name ] = field.value;
+						}
+					});
+
+					if ( errorEl ) {
+						errorEl.setAttribute( 'hidden', '' );
+					}
+					if ( submitEl ) {
+						submitEl.disabled = true;
+					}
+
+					fetch( exitForm.action, {
+						method:  'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body:    JSON.stringify( payload )
+					})
+						.then( function ( response ) {
+							if ( ! response.ok ) {
+								throw new Error( 'Request failed' );
+							}
+							return response.json();
+						})
+						.then( function () {
+							exitForm.setAttribute( 'hidden', '' );
+							var intro = exitModal.querySelectorAll( '.h3vt-tour__modal-content > .h3vt-tour__exit-headline, .h3vt-tour__modal-content > .h3vt-tour__exit-message' );
+							Array.prototype.forEach.call( intro, function ( el ) {
+								el.setAttribute( 'hidden', '' );
+							});
+							var success = exitModal.querySelector( '.h3vt-tour__exit-success' );
+							if ( success ) {
+								success.removeAttribute( 'hidden' );
+							}
+						})
+						.catch( function () {
+							if ( errorEl ) {
+								errorEl.removeAttribute( 'hidden' );
+							}
+							if ( submitEl ) {
+								submitEl.disabled = false;
+							}
+						});
+				});
+			}
 		}
 	}
 })();

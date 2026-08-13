@@ -1,13 +1,16 @@
 /**
  * Hotspot Editor — vanilla JS module for visual hotspot placement.
  *
- * Injected into ACF slide repeater rows on the h3vt_tour edit screen.
- * Reads floorplan data from wp_localize_script (h3vtHotspotData).
+ * Injected into the ACF gallery sidebar (Edit Image form) on the
+ * h3vt_tour edit screen, where the floorplan hotspot fields live as
+ * attachment fields. Reads floorplan data and previously saved hotspot
+ * placements from wp_localize_script (h3vtHotspotData).
  */
 ( function () {
 	'use strict';
 
 	var floorplans = ( window.h3vtHotspotData && window.h3vtHotspotData.floorplans ) || [];
+	var savedHotspots = ( window.h3vtHotspotData && window.h3vtHotspotData.hotspots ) || {};
 
 	/**
 	 * Get the floorplan image URL by index.
@@ -22,53 +25,53 @@
 	}
 
 	/**
-	 * Find ACF input fields within a slide row.
+	 * Find the hotspot input fields within a gallery sidebar form.
 	 */
-	function getRowFields( row ) {
-		var selectField = row.querySelector( '.h3vt-hotspot-floorplan-select select' );
-		var xInput = row.querySelector( '.h3vt-hotspot-x-field input[type="number"]' );
-		var yInput = row.querySelector( '.h3vt-hotspot-y-field input[type="number"]' );
+	function getSidebarFields( container ) {
+		var selectField = container.querySelector( '.h3vt-hotspot-floorplan-select select' );
+		var xInput = container.querySelector( '.h3vt-hotspot-x-field input[type="number"]' );
+		var yInput = container.querySelector( '.h3vt-hotspot-y-field input[type="number"]' );
 		return { selectField: selectField, xInput: xInput, yInput: yInput };
 	}
 
 	/**
-	 * Collect all hotspot positions from other slide rows for the given floorplan index.
+	 * Parse the attachment ID from a sidebar input name, e.g.
+	 * "attachments[123][field_h3vt_attachment_slide_floorplan]".
 	 */
-	function getOtherHotspots( currentRow, fpIndex ) {
-		var dots = [];
-		var allRows = document.querySelectorAll( '.acf-row:not(.acf-clone)' );
+	function getAttachmentId( fields ) {
+		var name = fields.selectField ? fields.selectField.getAttribute( 'name' ) || '' : '';
+		var match = name.match( /attachments\[(\d+)\]/ );
+		return match ? match[ 1 ] : '';
+	}
 
-		allRows.forEach( function ( row ) {
-			if ( row === currentRow ) {
+	/**
+	 * Collect saved hotspot positions of the other slides for context dots.
+	 */
+	function getOtherHotspots( currentAttachmentId, fpIndex ) {
+		var dots = [];
+		Object.keys( savedHotspots ).forEach( function ( attId ) {
+			if ( String( attId ) === String( currentAttachmentId ) ) {
 				return;
 			}
-			var fields = getRowFields( row );
-			if ( ! fields.selectField || ! fields.xInput || ! fields.yInput ) {
-				return;
-			}
-			if ( String( fields.selectField.value ) === String( fpIndex ) && fields.xInput.value && fields.yInput.value ) {
-				dots.push( {
-					x: parseFloat( fields.xInput.value ),
-					y: parseFloat( fields.yInput.value ),
-				} );
+			var spot = savedHotspots[ attId ];
+			if ( spot && String( spot.floorplan ) === String( fpIndex ) ) {
+				dots.push( { x: parseFloat( spot.x ), y: parseFloat( spot.y ) } );
 			}
 		} );
-
 		return dots;
 	}
 
 	/**
-	 * Initialize the hotspot editor for a single slide row.
+	 * Initialize the hotspot editor within a gallery sidebar form.
 	 */
-	function initEditor( row ) {
-		if ( row.querySelector( '.h3vt-hotspot-editor' ) ) {
-			return; // Already initialized.
-		}
-
-		var fields = getRowFields( row );
-		if ( ! fields.selectField ) {
+	function initEditor( container ) {
+		var fields = getSidebarFields( container );
+		if ( ! fields.selectField || fields.selectField.dataset.h3vtHotspotInit ) {
 			return;
 		}
+		fields.selectField.dataset.h3vtHotspotInit = '1';
+
+		var attachmentId = getAttachmentId( fields );
 
 		// Create editor container after the select field's wrapper.
 		var editorWrap = document.createElement( 'div' );
@@ -106,7 +109,7 @@
 			editorWrap.appendChild( img );
 
 			// Other slides' hotspots (context dots).
-			var otherDots = getOtherHotspots( row, fpIndex );
+			var otherDots = getOtherHotspots( attachmentId, fpIndex );
 			otherDots.forEach( function ( dot ) {
 				var el = document.createElement( 'div' );
 				el.className = 'h3vt-hotspot-editor__dot h3vt-hotspot-editor__dot--other';
@@ -139,7 +142,7 @@
 				x = Math.round( x * 10 ) / 10;
 				y = Math.round( y * 10 ) / 10;
 
-				// Update ACF hidden fields.
+				// Update the hidden ACF number fields.
 				if ( fields.xInput ) {
 					fields.xInput.value = x;
 					fields.xInput.dispatchEvent( new Event( 'change', { bubbles: true } ) );
@@ -147,6 +150,16 @@
 				if ( fields.yInput ) {
 					fields.yInput.value = y;
 					fields.yInput.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+				}
+
+				// Keep the local context map fresh so switching images
+				// within this session shows the new placement.
+				if ( attachmentId ) {
+					savedHotspots[ attachmentId ] = {
+						floorplan: String( fields.selectField.value ),
+						x: x,
+						y: y,
+					};
 				}
 
 				// Move or create the active dot.
@@ -168,58 +181,39 @@
 	}
 
 	/**
-	 * Initialize all existing slide rows.
+	 * Scan for uninitialized sidebar forms.
 	 */
-	function initAllRows() {
-		var repeaterField = document.querySelector( '[data-key="field_h3vt_navigation_slides"]' );
-		if ( ! repeaterField ) {
-			return;
-		}
-
-		var rows = repeaterField.querySelectorAll( '.acf-row:not(.acf-clone)' );
-		rows.forEach( initEditor );
+	function initAll() {
+		var selects = document.querySelectorAll( '.h3vt-hotspot-floorplan-select select' );
+		selects.forEach( function ( select ) {
+			var sideData = select.closest( '.acf-gallery-side-data' ) || select.closest( '.acf-gallery-side' );
+			if ( sideData ) {
+				initEditor( sideData );
+			}
+		} );
 	}
 
 	/**
-	 * Observe ACF repeater for new rows and init editors on them.
+	 * The gallery sidebar loads its fields via AJAX each time an image is
+	 * selected — watch the document for the hotspot fields appearing.
 	 */
-	function observeNewRows() {
-		var repeaterField = document.querySelector( '[data-key="field_h3vt_navigation_slides"]' );
-		if ( ! repeaterField ) {
-			return;
-		}
-
-		var tbody = repeaterField.querySelector( '.acf-repeater-rows, tbody' );
-		if ( ! tbody ) {
-			return;
-		}
-
-		var observer = new MutationObserver( function ( mutations ) {
-			mutations.forEach( function ( mutation ) {
-				mutation.addedNodes.forEach( function ( node ) {
-					if ( node.nodeType === 1 && node.classList.contains( 'acf-row' ) && ! node.classList.contains( 'acf-clone' ) ) {
-						// Short delay to let ACF finish initializing the row.
-						setTimeout( function () {
-							initEditor( node );
-						}, 100 );
-					}
-				} );
-			} );
+	function observeSidebars() {
+		var observer = new MutationObserver( function () {
+			initAll();
 		} );
-
-		observer.observe( tbody, { childList: true } );
+		observer.observe( document.body, { childList: true, subtree: true } );
 	}
 
 	// Hook into ACF ready event.
 	if ( window.acf ) {
 		window.acf.addAction( 'ready', function () {
-			initAllRows();
-			observeNewRows();
+			initAll();
+			observeSidebars();
 		} );
 	} else {
 		document.addEventListener( 'DOMContentLoaded', function () {
-			initAllRows();
-			observeNewRows();
+			initAll();
+			observeSidebars();
 		} );
 	}
 } )();

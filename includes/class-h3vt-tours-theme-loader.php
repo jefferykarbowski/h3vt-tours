@@ -84,6 +84,24 @@ class H3VT_Tours_Theme_Loader {
 	}
 
 	/**
+	 * Get a single config value for a theme.
+	 *
+	 * @param string $slug    Theme slug.
+	 * @param string $key     Config key.
+	 * @param mixed  $default Returned when the theme or the key is absent.
+	 * @return mixed
+	 */
+	public static function get_theme_option( $slug, $key, $default = null ) {
+		$config = self::get_theme( $slug );
+
+		if ( ! $config || ! isset( $config[ $key ] ) ) {
+			return $default;
+		}
+
+		return $config[ $key ];
+	}
+
+	/**
 	 * Build the slug => label choices array for ACF select fields.
 	 *
 	 * Always includes 'classic' => 'Classic' as the first entry.
