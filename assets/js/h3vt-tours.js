@@ -461,11 +461,15 @@
 		 * Open a modal or panel element.
 		 *
 		 * @param {HTMLElement} modalEl The modal / panel root element.
+		 * @param {Object}      [opts]  keepPlaying: leave the slideshow
+		 *                              running behind the overlay;
+		 *                              noFocus: don't move focus into it.
 		 */
-		function openModal( modalEl ) {
+		function openModal( modalEl, opts ) {
 			if ( ! modalEl ) {
 				return;
 			}
+			opts = opts || {};
 
 			/*
 			 * Only one overlay at a time. The header stays clickable above an
@@ -479,10 +483,14 @@
 				closeModal( current );
 			}
 
-			// Pause slideshow while modal is open.
-			wasPlaying = isPlaying;
-			clearInterval( autoplayTimer );
-			autoplayTimer = null;
+			// Pause slideshow while modal is open (unless told to keep going).
+			if ( opts.keepPlaying ) {
+				wasPlaying = false;
+			} else {
+				wasPlaying = isPlaying;
+				clearInterval( autoplayTimer );
+				autoplayTimer = null;
+			}
 
 			previouslyFocused = document.activeElement;
 
@@ -497,7 +505,7 @@
 
 			// Focus trap.
 			var focusable = getFocusable( modalEl );
-			if ( focusable.length ) {
+			if ( focusable.length && ! opts.noFocus ) {
 				focusable[0].focus();
 			}
 
@@ -1222,6 +1230,20 @@
 		}
 
 		/* ---------------------------------------------------------------
+		 * 13b. Welcome / navigation instructions
+		 *
+		 * Themes that define a welcome card get it opened as soon as the
+		 * tour loads. The slideshow keeps running behind it, focus stays
+		 * put (so an embedded tour doesn't scroll the host page), and any
+		 * other overlay opening replaces it.
+		 * ------------------------------------------------------------- */
+		var welcomeModal = tourEl.querySelector( '.h3vt-tour__modal--welcome' );
+
+		if ( welcomeModal ) {
+			openModal( welcomeModal, { keepPlaying: true, noFocus: true } );
+		}
+
+		/* ---------------------------------------------------------------
 		 * 14. Exit Intent Popup
 		 *
 		 * Opens the lead-capture modal when the cursor leaves the page
@@ -1259,8 +1281,8 @@
 					return;
 				}
 
-				// Don't stack on top of another open modal.
-				if ( tourEl.querySelector( '.h3vt-tour__modal:not([hidden]), .h3vt-tour__panel--open' ) ) {
+				// Don't stack on top of another open modal (the welcome card is fine to replace).
+				if ( tourEl.querySelector( '.h3vt-tour__modal:not([hidden]):not(.h3vt-tour__modal--welcome), .h3vt-tour__panel--open' ) ) {
 					return;
 				}
 

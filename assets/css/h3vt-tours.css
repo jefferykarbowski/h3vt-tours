@@ -702,6 +702,15 @@
 	z-index: 600;
 }
 
+/*
+ * The bottom bar stays lit above the gallery backdrop too, so the icon
+ * buttons and playback controls read at full strength while a category
+ * is open (opening one of them swaps the gallery out, as the nav does).
+ */
+.h3vt-tour[data-nav-mode="modal"] .h3vt-tour__bottom-bar {
+	z-index: 600;
+}
+
 .h3vt-tour__modal--nav {
 	/* The one overlay that stays under the header, so the nav keeps working. */
 	z-index: 500;
@@ -1301,6 +1310,118 @@
 	z-index: 800; /* above every other overlay */
 }
 
+/* ==========================================================================
+   14d. Welcome / Navigation Instructions Card
+   ========================================================================== */
+
+/*
+ * Floats over the running slideshow without dimming it. The modal root
+ * and backdrop let clicks through so the header nav and bottom bar stay
+ * usable around the card; only the card itself takes the pointer.
+ */
+.h3vt-tour__modal--welcome {
+	pointer-events: none;
+}
+
+.h3vt-tour__modal--welcome .h3vt-tour__modal-backdrop {
+	background: none;
+	pointer-events: none;
+}
+
+.h3vt-tour__modal--welcome .h3vt-tour__modal-content {
+	pointer-events: auto;
+	width: 480px;
+	max-width: 88vw;
+	padding: 22px 24px 20px;
+	text-align: center;
+	overflow: visible;
+	background: #fff;
+	color: #6d6e71;
+	border-radius: 2px;
+}
+
+/* Orange × just outside the card's top-right corner, as in the tour. */
+.h3vt-tour__modal--welcome .h3vt-tour__modal-close {
+	top: 4px;
+	right: -40px;
+	width: 32px;
+	height: 32px;
+	font-size: 34px;
+	font-weight: 700;
+	color: var(--h3vt-button-bg, #ff6b00);
+	background: none;
+}
+
+.h3vt-tour__modal--welcome .h3vt-tour__modal-close:hover,
+.h3vt-tour__modal--welcome .h3vt-tour__modal-close:focus-visible {
+	color: var(--h3vt-hover, var(--h3vt-button-bg, #ff6b00));
+	background: none;
+}
+
+/* Arrow | label | arrow */
+.h3vt-tour__welcome-row {
+	display: grid;
+	grid-template-columns: 52px 1fr 52px;
+	align-items: start;
+	gap: 6px;
+}
+
+.h3vt-tour__welcome-row--bottom {
+	align-items: end;
+}
+
+.h3vt-tour__welcome-arrow {
+	width: 52px;
+	height: 78px;
+	color: var(--h3vt-button-bg, #ff6b00);
+}
+
+/* Top row: arrows sweep up and outward (left drawn, right mirrored). */
+.h3vt-tour__welcome-row--top .h3vt-tour__welcome-arrow:last-child {
+	transform: scaleX(-1);
+}
+
+/* Bottom row: same arrows flipped to sweep down and outward. */
+.h3vt-tour__welcome-row--bottom .h3vt-tour__welcome-arrow:first-child {
+	transform: scaleY(-1);
+}
+
+.h3vt-tour__welcome-row--bottom .h3vt-tour__welcome-arrow:last-child {
+	transform: scale(-1, -1);
+}
+
+.h3vt-tour__welcome-label {
+	margin: 4px 0 0;
+	font-size: 1.35rem;
+	font-weight: 700;
+	line-height: 1.25;
+	color: var(--h3vt-button-bg, #ff6b00);
+}
+
+.h3vt-tour__welcome-label--small {
+	margin: 0 0 6px;
+	font-size: 0.95rem;
+}
+
+.h3vt-tour__welcome-or {
+	margin: 2px 0 8px;
+	font-size: 1.35rem;
+	font-weight: 700;
+	color: var(--h3vt-button-bg, #ff6b00);
+}
+
+.h3vt-tour__welcome-headline {
+	margin: 0 0 18px;
+	font-size: 1.3rem;
+	font-weight: 700;
+	line-height: 1.25;
+	color: inherit;
+}
+
+.h3vt-tour__welcome-headline + .h3vt-tour__welcome-or {
+	margin-top: 6px;
+}
+
 .h3vt-tour__modal--exit .h3vt-tour__modal-content {
 	width: 440px;
 	max-width: 92vw;
@@ -1833,6 +1954,35 @@
 	.h3vt-tour__nav-slide-caption {
 		padding: 10px 40px;
 		font-size: 12px;
+	}
+
+	/* Welcome card — tighter type, × tucked inside the card edge */
+	.h3vt-tour__modal--welcome .h3vt-tour__modal-content {
+		padding: 18px 12px 14px;
+	}
+
+	.h3vt-tour__modal--welcome .h3vt-tour__modal-close {
+		top: -38px;
+		right: 0;
+	}
+
+	.h3vt-tour__welcome-row {
+		grid-template-columns: 36px 1fr 36px;
+	}
+
+	.h3vt-tour__welcome-arrow {
+		width: 36px;
+		height: 54px;
+	}
+
+	.h3vt-tour__welcome-label,
+	.h3vt-tour__welcome-or,
+	.h3vt-tour__welcome-headline {
+		font-size: 1.05rem;
+	}
+
+	.h3vt-tour__welcome-label--small {
+		font-size: 0.8rem;
 	}
 
 	/* Floor plans panel full width */
