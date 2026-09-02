@@ -173,20 +173,31 @@ class H3VT_Tours_Renderer {
 		$index          = 1;
 		if ( is_array( $raw_categories ) ) {
 			foreach ( $raw_categories as $category ) {
-				$label            = isset( $category['nav_label'] ) ? $category['nav_label'] : '';
-				$nav_categories[] = array( 'nav_label' => $label );
+				$label = isset( $category['nav_label'] ) ? $category['nav_label'] : '';
 
 				if ( empty( $category['nav_gallery'] ) || ! is_array( $category['nav_gallery'] ) ) {
 					continue;
 				}
 
+				$category_slides = array();
 				foreach ( $category['nav_gallery'] as $image ) {
 					if ( ! is_array( $image ) ) {
 						continue;
 					}
-					$slides[] = self::gallery_image_to_slide( $image, $label, $index );
+					$category_slides[] = self::gallery_image_to_slide( $image, $label, $index );
 					$index++;
 				}
+
+				// A category with no slides would render as a nav item that
+				// opens an empty panel, so it is left out of the navigation
+				// entirely. Tours legitimately have no content for some of the
+				// standard categories.
+				if ( empty( $category_slides ) ) {
+					continue;
+				}
+
+				$nav_categories[] = array( 'nav_label' => $label );
+				$slides           = array_merge( $slides, $category_slides );
 			}
 		}
 
