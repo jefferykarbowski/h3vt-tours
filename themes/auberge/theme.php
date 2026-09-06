@@ -26,6 +26,7 @@ return array(
 	 * the labels become line breaks.
 	 */
 	'welcome'     => array(
+		'duration'     => 6, // seconds before it slides away on its own
 		'top_label'    => "Gallery Buttons\nfor Specific Areas",
 		'headline'     => 'Welcome to Our Virtual Tour',
 		'subheadline'  => 'The Tour Will Autorun at the Start',

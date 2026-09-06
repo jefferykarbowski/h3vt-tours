@@ -1338,6 +1338,37 @@
 	background: #fff;
 	color: #6d6e71;
 	border-radius: 2px;
+	/* Slides in from the left when shown; the leaving class sends it out right. */
+	animation: h3vt-welcome-in 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.h3vt-tour__modal--welcome.h3vt-tour__modal--leaving .h3vt-tour__modal-content {
+	animation: h3vt-welcome-out 0.6s cubic-bezier(0.55, 0.06, 0.68, 0.19) both;
+}
+
+@keyframes h3vt-welcome-in {
+	from {
+		transform: translateX(calc(-50vw - 100%));
+	}
+	to {
+		transform: translateX(0);
+	}
+}
+
+@keyframes h3vt-welcome-out {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(calc(50vw + 100%));
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.h3vt-tour__modal--welcome .h3vt-tour__modal-content,
+	.h3vt-tour__modal--welcome.h3vt-tour__modal--leaving .h3vt-tour__modal-content {
+		animation: none;
+	}
 }
 
 /* Orange × just outside the card's top-right corner, as in the tour. */

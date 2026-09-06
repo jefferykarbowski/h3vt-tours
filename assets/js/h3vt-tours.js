@@ -565,9 +565,33 @@
 				trapKeyHandler = null;
 			}
 
-			var isPanel = modalEl.classList.contains( 'h3vt-tour__panel' );
+			var isPanel   = modalEl.classList.contains( 'h3vt-tour__panel' );
+			var isWelcome = modalEl.classList.contains( 'h3vt-tour__modal--welcome' );
 
-			if ( isPanel ) {
+			if ( isWelcome && ! modalEl.classList.contains( 'h3vt-tour__modal--leaving' ) ) {
+				// The welcome card slides out to the right before it hides.
+				modalEl.classList.add( 'h3vt-tour__modal--leaving' );
+
+				var welcomeContent = modalEl.querySelector( '.h3vt-tour__modal-content' );
+				var hideWelcome    = function () {
+					modalEl.setAttribute( 'hidden', '' );
+					modalEl.classList.remove( 'h3vt-tour__modal--leaving' );
+					if ( welcomeContent ) {
+						welcomeContent.removeEventListener( 'animationend', hideWelcome );
+					}
+				};
+
+				if ( welcomeContent ) {
+					welcomeContent.addEventListener( 'animationend', hideWelcome );
+				}
+
+				// Fallback if the animation is disabled or never ends.
+				setTimeout( function () {
+					if ( ! modalEl.hasAttribute( 'hidden' ) ) {
+						hideWelcome();
+					}
+				}, 800 );
+			} else if ( isPanel ) {
 				modalEl.classList.remove( 'h3vt-tour__panel--open' );
 
 				var onTransitionEnd = function () {
@@ -1233,14 +1257,30 @@
 		 * 13b. Welcome / navigation instructions
 		 *
 		 * Themes that define a welcome card get it opened as soon as the
-		 * tour loads. The slideshow keeps running behind it, focus stays
-		 * put (so an embedded tour doesn't scroll the host page), and any
-		 * other overlay opening replaces it.
+		 * tour loads. It slides in from the left, the slideshow keeps
+		 * running behind it, focus stays put (so an embedded tour doesn't
+		 * scroll the host page), any other overlay opening replaces it,
+		 * and after data-duration seconds it slides out to the right on
+		 * its own.
 		 * ------------------------------------------------------------- */
 		var welcomeModal = tourEl.querySelector( '.h3vt-tour__modal--welcome' );
 
 		if ( welcomeModal ) {
+			var welcomeSeconds = parseFloat( welcomeModal.getAttribute( 'data-duration' ) );
+			if ( isNaN( welcomeSeconds ) ) {
+				welcomeSeconds = 6;
+			}
+
 			openModal( welcomeModal, { keepPlaying: true, noFocus: true } );
+
+			if ( welcomeSeconds > 0 ) {
+				setTimeout( function () {
+					// Skip if it was already closed or replaced by another overlay.
+					if ( ! welcomeModal.hasAttribute( 'hidden' ) && ! welcomeModal.classList.contains( 'h3vt-tour__modal--leaving' ) ) {
+						closeModal( welcomeModal );
+					}
+				}, welcomeSeconds * 1000 );
+			}
 		}
 
 		/* ---------------------------------------------------------------

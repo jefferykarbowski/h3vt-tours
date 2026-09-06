@@ -857,6 +857,8 @@ class H3VT_Tours_Renderer {
 		$sub      = isset( $welcome['subheadline'] ) ? $welcome['subheadline'] : '';
 		$bottom   = isset( $welcome['bottom_label'] ) ? $welcome['bottom_label'] : '';
 		$or       = isset( $welcome['or_label'] ) ? $welcome['or_label'] : __( 'Or', 'h3vt-tours' );
+		// Seconds on screen before it slides away on its own; 0 keeps it until closed.
+		$duration = isset( $welcome['duration'] ) ? (float) $welcome['duration'] : 6;
 
 		if ( ! $top && ! $headline && ! $sub && ! $bottom ) {
 			return;
@@ -864,7 +866,7 @@ class H3VT_Tours_Renderer {
 
 		$arrow = '<svg class="h3vt-tour__welcome-arrow" viewBox="0 0 60 90" aria-hidden="true" focusable="false"><path d="M58 86 C 24 82, 8 54, 11 18" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M11 0 L 0 23 L 23 23 Z" fill="currentColor"/></svg>';
 		?>
-		<div class="h3vt-tour__modal h3vt-tour__modal--welcome" data-modal-name="welcome" role="dialog" aria-label="<?php echo esc_attr( $headline ? $headline : __( 'Welcome', 'h3vt-tours' ) ); ?>" hidden>
+		<div class="h3vt-tour__modal h3vt-tour__modal--welcome" data-modal-name="welcome" data-duration="<?php echo esc_attr( $duration ); ?>" role="dialog" aria-label="<?php echo esc_attr( $headline ? $headline : __( 'Welcome', 'h3vt-tours' ) ); ?>" hidden>
 			<div class="h3vt-tour__modal-backdrop"></div>
 			<div class="h3vt-tour__modal-content">
 				<button class="h3vt-tour__modal-close" aria-label="<?php esc_attr_e( 'Close', 'h3vt-tours' ); ?>">&times;</button>
