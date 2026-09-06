@@ -19,4 +19,17 @@ return array(
 	 * dropdown list, matching how the Auberge 3DVista tours behave.
 	 */
 	'nav_mode'    => 'modal',
+
+	/*
+	 * Navigation-instructions card shown when the tour loads, rebuilt as
+	 * real text from the graphic the 3DVista tours open with. Newlines in
+	 * the labels become line breaks.
+	 */
+	'welcome'     => array(
+		'duration'     => 6, // seconds before it slides away on its own
+		'top_label'    => "Gallery Buttons\nfor Specific Areas",
+		'headline'     => 'Welcome to Our Virtual Tour',
+		'subheadline'  => 'The Tour Will Autorun at the Start',
+		'bottom_label' => "Use the Navigation Buttons\nBelow to Access more Features",
+	),
 );

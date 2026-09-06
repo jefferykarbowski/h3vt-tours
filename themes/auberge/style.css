@@ -121,21 +121,38 @@
 	color: #fff;
 }
 
-/* ---------- Nav category gallery: white panel, photo + caption ---------- */
+/* ---------- Nav category gallery: white card on black, photo + caption ---------- */
+
+/*
+ * Matches the 3DVista Auberge tours: the pano view drops out to solid black,
+ * the header and bottom bar stay lit, and the photo sits in a white frame
+ * with its caption underneath — a card, not a full-screen photo.
+ */
+.h3vt-tour--theme-auberge .h3vt-tour__modal--nav .h3vt-tour__modal-backdrop {
+	background: #000;
+}
 
 .h3vt-tour--theme-auberge .h3vt-tour__modal--nav .h3vt-tour__modal-content {
 	background: #fff;
-	border-radius: 2px;
+	border-radius: 0;
+	padding: 8px;
+	box-shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
 }
 
-/* The tour stays legible behind the gallery, as in the 3DVista tour. */
-.h3vt-tour--theme-auberge .h3vt-tour__modal--nav .h3vt-tour__modal-backdrop {
-	background: rgba(0, 0, 0, 0.55);
+/*
+ * Keep the card the size of the original popup rather than filling the
+ * band. The width cap leaves room for the 8px frame inside the 92vw panel.
+ */
+.h3vt-tour--theme-auberge .h3vt-tour__nav-slide img {
+	max-width: min(calc(92vw - 16px), 960px);
+	max-height: min(var(--h3vt-nav-img-max, 60vh), 52vh);
 }
 
 .h3vt-tour--theme-auberge .h3vt-tour__nav-slide-caption {
-	color: #53565A;
-	font-weight: 600;
+	padding: 16px 56px 12px;
+	color: #1a1a1a;
+	font-size: 16px;
+	font-weight: 500;
 }
 
 /* Close tile sits on the photo's top-right corner, as in the tour. */
@@ -144,10 +161,11 @@
 	right: 8px;
 	width: 42px;
 	height: 42px;
-	border-radius: 2px;
+	border-radius: 0;
 	background: #fff;
 	color: #1a1a1a;
 	font-size: 30px;
+	font-weight: 300;
 }
 
 .h3vt-tour--theme-auberge .h3vt-tour__modal--nav .h3vt-tour__modal-close:hover,
@@ -156,10 +174,43 @@
 	color: #fff;
 }
 
-/* Arrows overlay the photo, so they carry their own shadow for contrast. */
+/*
+ * Thin dark chevrons just inside the photo edges, as in the tour. A light
+ * halo keeps them readable over dark photos.
+ */
 .h3vt-tour--theme-auberge .h3vt-tour__nav-gallery-arrow {
-	color: #fff;
-	filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.65));
+	color: #1a1a1a;
+	filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.9));
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__nav-gallery-arrow--prev {
+	left: 12px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__nav-gallery-arrow--next {
+	right: 12px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__nav-gallery-arrow svg {
+	width: 30px;
+	height: 30px;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__nav-gallery-arrow:hover,
+.h3vt-tour--theme-auberge .h3vt-tour__nav-gallery-arrow:focus-visible {
+	color: var(--h3vt-button-bg, #ED8B00);
+}
+
+/* ---------- Welcome card: white, Montserrat, orange arrows and labels ---------- */
+
+.h3vt-tour--theme-auberge .h3vt-tour__modal--welcome .h3vt-tour__modal-content {
+	color: #7a7c80;
+}
+
+.h3vt-tour--theme-auberge .h3vt-tour__welcome-label,
+.h3vt-tour--theme-auberge .h3vt-tour__welcome-or,
+.h3vt-tour--theme-auberge .h3vt-tour__welcome-headline {
+	letter-spacing: 0.2px;
 }
 
 /* ---------- Slide title: white, upper-left, understated ---------- */
@@ -297,5 +348,24 @@
 
 	.h3vt-tour--theme-auberge .h3vt-tour__bottom-btn--icon span {
 		font-size: 11px;
+	}
+
+	/* Gallery card — tighter caption and arrows on small screens */
+	.h3vt-tour--theme-auberge .h3vt-tour__nav-slide-caption {
+		padding: 12px 36px 8px;
+		font-size: 14px;
+	}
+
+	.h3vt-tour--theme-auberge .h3vt-tour__nav-gallery-arrow--prev {
+		left: 6px;
+	}
+
+	.h3vt-tour--theme-auberge .h3vt-tour__nav-gallery-arrow--next {
+		right: 6px;
+	}
+
+	.h3vt-tour--theme-auberge .h3vt-tour__nav-gallery-arrow svg {
+		width: 24px;
+		height: 24px;
 	}
 }

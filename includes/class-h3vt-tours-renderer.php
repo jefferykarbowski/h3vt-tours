@@ -153,6 +153,7 @@ class H3VT_Tours_Renderer {
 			'autoplay_speed'   => $autoplay_speed,
 			'theme'            => $theme,
 			'nav_mode'         => H3VT_Tours_Theme_Loader::get_theme_option( $theme, 'nav_mode', 'dropdown' ),
+			'welcome'          => H3VT_Tours_Theme_Loader::get_theme_option( $theme, 'welcome', array() ),
 			'pdf_file'         => $pdf_file,
 			'pdf_button_text'  => $pdf_button_text,
 			'socials'          => array_filter( $socials ),
@@ -172,20 +173,31 @@ class H3VT_Tours_Renderer {
 		$index          = 1;
 		if ( is_array( $raw_categories ) ) {
 			foreach ( $raw_categories as $category ) {
-				$label            = isset( $category['nav_label'] ) ? $category['nav_label'] : '';
-				$nav_categories[] = array( 'nav_label' => $label );
+				$label = isset( $category['nav_label'] ) ? $category['nav_label'] : '';
 
 				if ( empty( $category['nav_gallery'] ) || ! is_array( $category['nav_gallery'] ) ) {
 					continue;
 				}
 
+				$category_slides = array();
 				foreach ( $category['nav_gallery'] as $image ) {
 					if ( ! is_array( $image ) ) {
 						continue;
 					}
-					$slides[] = self::gallery_image_to_slide( $image, $label, $index );
+					$category_slides[] = self::gallery_image_to_slide( $image, $label, $index );
 					$index++;
 				}
+
+				// A category with no slides would render as a nav item that
+				// opens an empty panel, so it is left out of the navigation
+				// entirely. Tours legitimately have no content for some of the
+				// standard categories.
+				if ( empty( $category_slides ) ) {
+					continue;
+				}
+
+				$nav_categories[] = array( 'nav_label' => $label );
+				$slides           = array_merge( $slides, $category_slides );
 			}
 		}
 
@@ -819,6 +831,73 @@ class H3VT_Tours_Renderer {
 		if ( ! empty( $data['settings']['exit_intent']['enabled'] ) ) {
 			self::render_exit_intent_modal( $data );
 		}
+
+		if ( ! empty( $data['settings']['welcome'] ) && is_array( $data['settings']['welcome'] ) ) {
+			self::render_welcome_modal( $data['settings']['welcome'] );
+		}
+	}
+
+	/**
+	 * Welcome / navigation-instructions card shown when the tour loads.
+	 *
+	 * Rendered only for themes that define a `welcome` array in theme.php.
+	 * It sits over the running slideshow without dimming or pausing it
+	 * (the front-end JS opens it with autoplay left running), and the header
+	 * nav and bottom bar stay clickable around it. Curved arrows point up
+	 * at the category buttons and down at the bottom-bar buttons.
+	 *
+	 * Keys: top_label, headline, subheadline, bottom_label, or_label.
+	 * Newlines in the labels become line breaks.
+	 *
+	 * @param array $welcome Theme welcome config.
+	 */
+	private static function render_welcome_modal( $welcome ) {
+		$top      = isset( $welcome['top_label'] ) ? $welcome['top_label'] : '';
+		$headline = isset( $welcome['headline'] ) ? $welcome['headline'] : '';
+		$sub      = isset( $welcome['subheadline'] ) ? $welcome['subheadline'] : '';
+		$bottom   = isset( $welcome['bottom_label'] ) ? $welcome['bottom_label'] : '';
+		$or       = isset( $welcome['or_label'] ) ? $welcome['or_label'] : __( 'Or', 'h3vt-tours' );
+		// Seconds on screen before it slides away on its own; 0 keeps it until closed.
+		$duration = isset( $welcome['duration'] ) ? (float) $welcome['duration'] : 6;
+
+		if ( ! $top && ! $headline && ! $sub && ! $bottom ) {
+			return;
+		}
+
+		$arrow = '<svg class="h3vt-tour__welcome-arrow" viewBox="0 0 60 90" aria-hidden="true" focusable="false"><path d="M58 86 C 24 82, 8 54, 11 18" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M11 0 L 0 23 L 23 23 Z" fill="currentColor"/></svg>';
+		?>
+		<div class="h3vt-tour__modal h3vt-tour__modal--welcome" data-modal-name="welcome" data-duration="<?php echo esc_attr( $duration ); ?>" role="dialog" aria-label="<?php echo esc_attr( $headline ? $headline : __( 'Welcome', 'h3vt-tours' ) ); ?>" hidden>
+			<div class="h3vt-tour__modal-backdrop"></div>
+			<div class="h3vt-tour__modal-content">
+				<button class="h3vt-tour__modal-close" aria-label="<?php esc_attr_e( 'Close', 'h3vt-tours' ); ?>">&times;</button>
+
+				<?php if ( $top ) : ?>
+					<div class="h3vt-tour__welcome-row h3vt-tour__welcome-row--top">
+						<?php echo $arrow; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG ?>
+						<p class="h3vt-tour__welcome-label"><?php echo nl2br( esc_html( $top ) ); ?></p>
+						<?php echo $arrow; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG ?>
+					</div>
+					<p class="h3vt-tour__welcome-or"><?php echo esc_html( $or ); ?></p>
+				<?php endif; ?>
+
+				<?php if ( $headline ) : ?>
+					<p class="h3vt-tour__welcome-headline"><?php echo esc_html( $headline ); ?></p>
+				<?php endif; ?>
+				<?php if ( $sub ) : ?>
+					<p class="h3vt-tour__welcome-headline"><?php echo esc_html( $sub ); ?></p>
+				<?php endif; ?>
+
+				<?php if ( $bottom ) : ?>
+					<p class="h3vt-tour__welcome-or"><?php echo esc_html( $or ); ?></p>
+					<div class="h3vt-tour__welcome-row h3vt-tour__welcome-row--bottom">
+						<?php echo $arrow; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG ?>
+						<p class="h3vt-tour__welcome-label h3vt-tour__welcome-label--small"><?php echo nl2br( esc_html( $bottom ) ); ?></p>
+						<?php echo $arrow; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG ?>
+					</div>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
 	}
 
 	/**
