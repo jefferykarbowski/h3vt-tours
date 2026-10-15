@@ -2,12 +2,15 @@
 /**
  * Reporting-property Google Analytics tag for tour pages.
  *
- * The site-wide GA property tracks general site traffic, but the client tour
- * analytics emails (sent by the h3-tour-management plugin) read a separate
- * GA4 "reporting" property whose measurement id lives in the shared
+ * The client tour analytics emails (sent by the h3-tour-management plugin) read
+ * a GA4 "reporting" property whose measurement id lives in the shared
  * `h3tm_ga_measurement_id` option. Legacy /h3panos/ tours already report into
  * that property; this makes the new /tour/ CPT tours do the same so they show
  * up in the client reports alongside the legacy tours.
+ *
+ * On h3vt.com the site-wide tag (Divi Theme Options > Integration) points at
+ * the same property, so this tag stands down whenever Divi already prints it.
+ * It only fires as a fallback if that site-wide tag is removed or changed.
  *
  * @package H3VT_Tours
  */
@@ -52,6 +55,35 @@ class H3VT_Tours_Analytics {
 	}
 
 	/**
+	 * Whether Divi's head integration already prints a tag for this id.
+	 *
+	 * Mirrors the conditions in Divi's own integration_head() so the two never
+	 * both fire, which would double count every tour page view.
+	 *
+	 * @param string $measurement_id The GA4 measurement id.
+	 * @return bool True when Divi will print a tag for the same id.
+	 */
+	private function divi_head_has_tag( $measurement_id ) {
+		global $shortname;
+
+		if ( empty( $shortname ) || ! function_exists( 'et_get_option' ) ) {
+			return false;
+		}
+
+		if ( function_exists( 'et_core_is_safe_mode_active' ) && et_core_is_safe_mode_active() ) {
+			return false;
+		}
+
+		if ( 'on' !== et_get_option( $shortname . '_integrate_header_enable' ) ) {
+			return false;
+		}
+
+		$head = (string) et_get_option( $shortname . '_integration_head' );
+
+		return false !== strpos( $head, $measurement_id );
+	}
+
+	/**
 	 * Print the GA4 gtag snippet for the reporting property on single tour pages.
 	 *
 	 * The default pagePath GA records is the real URL (/tour/{slug}/), which is
@@ -64,7 +96,7 @@ class H3VT_Tours_Analytics {
 		}
 
 		$measurement_id = $this->get_measurement_id();
-		if ( '' === $measurement_id ) {
+		if ( '' === $measurement_id || $this->divi_head_has_tag( $measurement_id ) ) {
 			return;
 		}
 
