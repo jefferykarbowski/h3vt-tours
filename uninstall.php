@@ -41,4 +41,10 @@ foreach ( $h3vt_flagged as $h3vt_att_id ) {
 	delete_post_meta( $h3vt_att_id, '_h3vt_tour_media' );
 }
 
+// Client analytics: stop the report job and drop plugin-wide settings. Client
+// tour assignments (user meta) are left in place.
+wp_clear_scheduled_hook( 'h3vt_tours_client_report_cron' );
+delete_option( 'h3vt_tours_client_reports_last_run' );
+delete_option( 'h3vt_tours_client_report_lock' );
+
 flush_rewrite_rules();
