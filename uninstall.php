@@ -47,5 +47,7 @@ wp_clear_scheduled_hook( 'h3vt_tours_client_report_cron' );
 delete_option( 'h3vt_tours_client_reports_last_run' );
 delete_option( 'h3vt_tours_client_report_lock' );
 delete_option( 'h3vt_tours_client_analytics_takeover' );
+delete_option( 'h3vt_tours_legacy_tours_takeover' );
+delete_option( 'h3vt_tours_legacy_tours_source' );
 
 flush_rewrite_rules();

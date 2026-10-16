@@ -3,7 +3,7 @@
  * Plugin Name: H3VT Tours
  * Plugin URI:  https://h3vt.com
  * Description: Virtual tour builder for senior living facilities.
- * Version:     1.11.1
+ * Version:     1.12.0
  * Author:      H3VT
  * Author URI:  https://h3vt.com
  * License:     GPL-2.0+
@@ -33,7 +33,7 @@ if ( version_compare( PHP_VERSION, '7.2', '<' ) ) {
 /**
  * Plugin constants.
  */
-define( 'H3VT_TOURS_VERSION', '1.11.1' );
+define( 'H3VT_TOURS_VERSION', '1.12.0' );
 define( 'H3VT_TOURS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'H3VT_TOURS_URL', plugin_dir_url( __FILE__ ) );
 define( 'H3VT_TOURS_BASENAME', plugin_basename( __FILE__ ) );
@@ -51,6 +51,19 @@ add_action( 'plugins_loaded', function () {
 		} );
 	}
 }, 10 );
+
+/**
+ * No "new user" notification emails, to the admin or to the new user.
+ *
+ * h3vt.com has always run with this pluggable stubbed out: it lived in the
+ * theme's functions.php, then in the h3-tour-management plugin. It is carried
+ * here so that retiring that plugin does not quietly switch the emails back on.
+ * Whichever plugin loads first defines it; both versions do nothing.
+ */
+if ( ! function_exists( 'wp_new_user_notification' ) ) {
+	function wp_new_user_notification( $user_id, $deprecated = null, $notify = '' ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- pluggable.
+	}
+}
 
 /**
  * Load the main plugin class.

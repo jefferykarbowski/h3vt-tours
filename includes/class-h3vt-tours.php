@@ -66,6 +66,7 @@ class H3VT_Tours {
 		require_once $dir . 'class-h3vt-tours-client-reports.php';
 		require_once $dir . 'class-h3vt-tours-client-page.php';
 		require_once $dir . 'class-h3vt-tours-user-fields.php';
+		require_once $dir . 'class-h3vt-tours-legacy-tours.php';
 		require_once $dir . 'class-h3vt-tours-3dvista-converter.php';
 	}
 
@@ -84,10 +85,13 @@ class H3VT_Tours {
 		new H3VT_Tours_Analytics();
 		new H3VT_Tours_Client_Reports();
 		new H3VT_Tours_Client_Page();
+		new H3VT_Tours_Legacy_Tours();
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			require_once H3VT_TOURS_PATH . 'includes/class-h3vt-tours-client-analytics-cli.php';
 			WP_CLI::add_command( 'h3vt-tours client-analytics', 'H3VT_Tours_Client_Analytics_CLI' );
+			require_once H3VT_TOURS_PATH . 'includes/class-h3vt-tours-legacy-tours-cli.php';
+			WP_CLI::add_command( 'h3vt-tours legacy-tours', 'H3VT_Tours_Legacy_Tours_CLI' );
 		}
 
 		if ( is_admin() ) {
