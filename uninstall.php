@@ -46,5 +46,6 @@ foreach ( $h3vt_flagged as $h3vt_att_id ) {
 wp_clear_scheduled_hook( 'h3vt_tours_client_report_cron' );
 delete_option( 'h3vt_tours_client_reports_last_run' );
 delete_option( 'h3vt_tours_client_report_lock' );
+delete_option( 'h3vt_tours_client_analytics_takeover' );
 
 flush_rewrite_rules();

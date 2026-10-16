@@ -112,7 +112,7 @@ class H3VT_Tours_User_Fields {
 
 		<?php if ( ! $enabled ) : ?>
 			<div class="notice notice-info inline"><p>
-				<?php esc_html_e( 'H3 Tour Management is still active, so it keeps sending client reports and its own "3D Tour Settings" fields still apply. These settings take over once it is deactivated. Copy its assignments here first with: wp h3vt-tours client-analytics migrate', 'h3vt-tours' ); ?>
+				<?php esc_html_e( 'H3 Tour Management still sends client reports, and its own "3D Tour Settings" fields still apply. These settings take over after running: wp h3vt-tours client-analytics migrate --apply, then wp h3vt-tours client-analytics takeover on', 'h3vt-tours' ); ?>
 			</p></div>
 		<?php endif; ?>
 

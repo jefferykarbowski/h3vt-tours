@@ -32,14 +32,17 @@ class H3VT_Tours_Client_Page {
 	);
 
 	public function __construct() {
-		// After h3tm's plugins_loaded registration, so its shortcode wins while it is active.
+		// After h3tm's plugins_loaded registration, so this decides which one serves the page.
 		add_action( 'init', array( $this, 'register' ), 20 );
 	}
 
 	public function register() {
-		if ( H3VT_Tours_Client_Analytics::is_enabled() && ! shortcode_exists( self::SHORTCODE ) ) {
-			add_shortcode( self::SHORTCODE, array( $this, 'render' ) );
+		if ( ! H3VT_Tours_Client_Analytics::is_enabled() ) {
+			return;
 		}
+		// Replaces h3tm's handler when taking over from it.
+		remove_shortcode( self::SHORTCODE );
+		add_shortcode( self::SHORTCODE, array( $this, 'render' ) );
 	}
 
 	/**

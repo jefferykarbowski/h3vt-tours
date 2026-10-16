@@ -8,6 +8,7 @@
  *   wp h3vt-tours client-analytics preview <user_id> [--date=<Y-m-d>]
  *   wp h3vt-tours client-analytics send <user_id>
  *   wp h3vt-tours client-analytics run
+ *   wp h3vt-tours client-analytics takeover <on|off|status>
  *
  * @package H3VT_Tours
  */
@@ -55,8 +56,9 @@ class H3VT_Tours_Client_Analytics_CLI {
 	 * "Old tour name=legacy" to keep it as an old tour.
 	 *
 	 * [--force]
-	 * : Allow --apply after h3tm has been deactivated and a migration already
-	 * ran. This overwrites any assignment edits made in this plugin since.
+	 * : Allow --apply after client analytics have moved here (takeover on, or
+	 * h3tm deactivated) and a migration already ran. This overwrites any
+	 * assignment edits made in this plugin since.
 	 *
 	 * ## EXAMPLES
 	 *
@@ -71,8 +73,8 @@ class H3VT_Tours_Client_Analytics_CLI {
 
 		$apply = ! empty( $assoc_args['apply'] );
 
-		if ( $apply && get_option( self::MIGRATED_OPTION ) && ! H3VT_Tours_Client_Analytics::legacy_plugin_active() && empty( $assoc_args['force'] ) ) {
-			WP_CLI::error( 'A migration was already applied and h3tm is no longer active, so assignments may have been edited here since. Re-run with --force to overwrite them from h3tm\'s data.' );
+		if ( $apply && get_option( self::MIGRATED_OPTION ) && H3VT_Tours_Client_Analytics::is_enabled() && empty( $assoc_args['force'] ) ) {
+			WP_CLI::error( 'A migration was already applied and client analytics now run here, so assignments may have been edited since. Re-run with --force to overwrite them from h3tm\'s data.' );
 		}
 
 		$overrides = $this->parse_map( isset( $assoc_args['map'] ) ? $assoc_args['map'] : '' );
@@ -247,7 +249,7 @@ class H3VT_Tours_Client_Analytics_CLI {
 				'due'       => H3VT_Tours_Client_Reports::is_due( $user_id, $date ) ? 'yes' : 'no',
 			);
 		}
-		WP_CLI::log( 'Sending is ' . ( H3VT_Tours_Client_Analytics::is_enabled() ? 'ON' : 'OFF (h3tm is active)' ) . '. Date: ' . $date->format( 'Y-m-d' ) );
+		WP_CLI::log( 'Sending is ' . ( H3VT_Tours_Client_Analytics::is_enabled() ? 'ON' : 'OFF (h3tm sends them, see: takeover on)' ) . '. Date: ' . $date->format( 'Y-m-d' ) );
 		WP_CLI\Utils\format_items( 'table', $items, array( 'user', 'email', 'frequency', 'last_sent', 'tours', 'due' ) );
 	}
 
@@ -305,10 +307,51 @@ class H3VT_Tours_Client_Analytics_CLI {
 	 */
 	public function run( $args, $assoc_args ) {
 		if ( ! H3VT_Tours_Client_Analytics::is_enabled() ) {
-			WP_CLI::error( 'h3tm is still active and sends the reports; nothing to do.' );
+			WP_CLI::error( 'h3tm still sends the reports (see: takeover on). Nothing to do.' );
 		}
 		( new H3VT_Tours_Client_Reports() )->run();
 		WP_CLI::log( wp_json_encode( get_option( H3VT_Tours_Client_Reports::LAST_RUN ), JSON_PRETTY_PRINT ) );
+	}
+
+	/**
+	 * Hand client analytics over from an active h3tm, or back to it.
+	 *
+	 * h3tm also serves the old /h3panos/ tours, so it has to stay active. With
+	 * takeover on, this plugin unhooks h3tm's report cron, the
+	 * [tour_analytics_display] shortcode and h3tm's "3D Tour Settings" profile
+	 * fields, and runs its own. h3tm's data is not touched, so `off` restores
+	 * its reports exactly as they were.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <state>
+	 * : on, off or status.
+	 * ---
+	 * options:
+	 *   - on
+	 *   - off
+	 *   - status
+	 * ---
+	 *
+	 * @param array $args       Positional args.
+	 * @param array $assoc_args Flags.
+	 */
+	public function takeover( $args, $assoc_args ) {
+		$state = $args[0];
+
+		if ( $state === 'on' ) {
+			if ( ! get_option( self::MIGRATED_OPTION ) ) {
+				WP_CLI::error( 'Run `migrate --apply` first, or clients would have no tours assigned here.' );
+			}
+			update_option( H3VT_Tours_Client_Analytics::TAKEOVER_OPTION, current_time( 'mysql' ), true );
+		} elseif ( $state === 'off' ) {
+			delete_option( H3VT_Tours_Client_Analytics::TAKEOVER_OPTION );
+		}
+
+		$since  = get_option( H3VT_Tours_Client_Analytics::TAKEOVER_OPTION );
+		$legacy = H3VT_Tours_Client_Analytics::legacy_plugin_active();
+		$owner  = ( ! $legacy || $since ) ? 'h3vt-tours' : 'h3tm';
+		WP_CLI::success( sprintf( 'Client analytics run from %s. h3tm active: %s. Takeover: %s.', $owner, $legacy ? 'yes' : 'no', $since ? 'on since ' . $since : 'off' ) );
 	}
 
 	/*
