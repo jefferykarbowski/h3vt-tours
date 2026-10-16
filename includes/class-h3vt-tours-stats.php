@@ -76,7 +76,7 @@ class H3VT_Tours_Stats {
 		$tours = array();
 		$table = $wpdb->prefix . 'h3tm_tour_metadata';
 
-		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) {
+		if ( H3VT_Tours_Client_Analytics::table_exists( $table ) ) {
 			// Table name is the site prefix plus a fixed suffix; there is no user input.
 			$rows = $wpdb->get_results( "SELECT tour_id, display_name, s3_folder FROM {$table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery
 			foreach ( (array) $rows as $row ) {
@@ -121,7 +121,7 @@ class H3VT_Tours_Stats {
 	 * @param object $row Row with tour_id and s3_folder.
 	 * @return string|null
 	 */
-	private static function metadata_path( $row ) {
+	public static function metadata_path( $row ) {
 		if ( ! empty( $row->tour_id ) ) {
 			return '/tours/' . $row->tour_id . '/';
 		}
