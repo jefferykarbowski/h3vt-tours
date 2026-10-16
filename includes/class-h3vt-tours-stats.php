@@ -15,6 +15,11 @@
  * h3-tour-management plugin, so their history stays reportable after that
  * plugin is removed.
  *
+ * A rebuilt h3vt_tour post lists the old S3 tour(s) it replaces in post meta
+ * `_h3vt_tours_legacy_paths` (the same links the client reports use). Those
+ * old URLs are counted as part of the rebuilt tour, so its numbers reach back
+ * past the day /tour/ pages started reporting.
+ *
  * @package H3VT_Tours
  */
 
@@ -68,26 +73,26 @@ class H3VT_Tours_Stats {
 	/**
 	 * Every known tour keyed by its GA4 path prefix.
 	 *
-	 * @return array path => array('title' => string, 'path' => string)
+	 * A published h3vt_tour also counts the old S3 tour paths linked to it, and
+	 * each of those legacy entries names the tour that absorbed it in 'owner'.
+	 *
+	 * @return array path => array(
+	 *     'title' => string,
+	 *     'path'  => string,   the tour's own path
+	 *     'paths' => string[], every path prefix counted for the tour
+	 *     'owner' => string,   legacy entries only: path of the rebuilt tour, or ''
+	 * )
 	 */
 	public static function get_tour_catalog() {
-		global $wpdb;
-
 		$tours = array();
-		$table = $wpdb->prefix . 'h3tm_tour_metadata';
 
-		if ( H3VT_Tours_Client_Analytics::table_exists( $table ) ) {
-			// Table name is the site prefix plus a fixed suffix; there is no user input.
-			$rows = $wpdb->get_results( "SELECT tour_id, display_name, s3_folder FROM {$table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery
-			foreach ( (array) $rows as $row ) {
-				$path = self::metadata_path( $row );
-				if ( $path ) {
-					$tours[ $path ] = array(
-						'title' => trim( $row->display_name ),
-						'path'  => $path,
-					);
-				}
-			}
+		foreach ( H3VT_Tours_Client_Analytics::legacy_catalog() as $path => $name ) {
+			$tours[ $path ] = array(
+				'title' => $name,
+				'path'  => $path,
+				'paths' => array( $path ),
+				'owner' => '',
+			);
 		}
 
 		$cpt_tours = get_posts(
@@ -95,13 +100,37 @@ class H3VT_Tours_Stats {
 				'post_type'   => 'h3vt_tour',
 				'post_status' => 'publish',
 				'numberposts' => -1,
+				'orderby'     => 'ID',
+				'order'       => 'ASC',
 			)
 		);
 		foreach ( $cpt_tours as $post ) {
-			$path           = '/tour/' . $post->post_name . '/';
+			$path  = '/tour/' . $post->post_name . '/';
+			$paths = array( $path );
+
+			foreach ( H3VT_Tours_Client_Analytics::get_legacy_paths( $post->ID ) as $legacy ) {
+				// An old URL is counted once, under the first tour that claims it.
+				if ( isset( $tours[ $legacy ]['owner'] ) && $tours[ $legacy ]['owner'] !== '' ) {
+					continue;
+				}
+				$paths[] = $legacy;
+				if ( isset( $tours[ $legacy ] ) ) {
+					$tours[ $legacy ]['owner'] = $path;
+				} else {
+					// Linked, but missing from the metadata table.
+					$tours[ $legacy ] = array(
+						'title' => $legacy,
+						'path'  => $legacy,
+						'paths' => array( $legacy ),
+						'owner' => $path,
+					);
+				}
+			}
+
 			$tours[ $path ] = array(
-				'title' => trim( get_the_title( $post ) ),
+				'title' => H3VT_Tours_Client_Analytics::post_title( $post ),
 				'path'  => $path,
+				'paths' => $paths,
 			);
 		}
 
@@ -141,6 +170,34 @@ class H3VT_Tours_Stats {
 			return '/' . $m[1] . '/' . $m[2] . '/';
 		}
 		return null;
+	}
+
+	/**
+	 * Every GA4 path prefix counted for a tour: its own path plus, for a rebuilt
+	 * tour, the old S3 tour paths linked to it.
+	 *
+	 * @param array  $catalog Output of get_tour_catalog().
+	 * @param string $path    Tour path.
+	 * @return string[]
+	 */
+	public static function counted_paths( $catalog, $path ) {
+		return isset( $catalog[ $path ] ) ? $catalog[ $path ]['paths'] : array( $path );
+	}
+
+	/**
+	 * Map each legacy path that belongs to a rebuilt tour to that tour's path.
+	 *
+	 * @param array $catalog Output of get_tour_catalog().
+	 * @return array legacy path => tour path
+	 */
+	private static function owner_map( $catalog ) {
+		$owners = array();
+		foreach ( $catalog as $path => $tour ) {
+			if ( ! empty( $tour['owner'] ) ) {
+				$owners[ $path ] = $tour['owner'];
+			}
+		}
+		return $owners;
 	}
 
 	/**
@@ -233,7 +290,7 @@ class H3VT_Tours_Stats {
 		if ( ! $refresh ) {
 			$cached = get_transient( $cache_key );
 			if ( is_array( $cached ) && isset( $cached['reports'] ) ) {
-				$this->fetched_at = $cached['fetched_at'];
+				$this->note_fetched_at( $cached['fetched_at'] );
 				return $cached['reports'];
 			}
 		}
@@ -241,17 +298,25 @@ class H3VT_Tours_Stats {
 		$client  = new H3VT_Tours_GA_Client();
 		$reports = $client->batch_run_reports( $requests );
 
-		$this->fetched_at = time();
+		$fetched_at = time();
+		$this->note_fetched_at( $fetched_at );
 		set_transient(
 			$cache_key,
 			array(
 				'reports'    => $reports,
-				'fetched_at' => $this->fetched_at,
+				'fetched_at' => $fetched_at,
 			),
 			self::CACHE_TTL
 		);
 
 		return $reports;
+	}
+
+	/**
+	 * Remember the oldest fetch time when a page needs more than one batch.
+	 */
+	private function note_fetched_at( $time ) {
+		$this->fetched_at = $this->fetched_at ? min( $this->fetched_at, $time ) : $time;
 	}
 
 	/**
@@ -276,25 +341,12 @@ class H3VT_Tours_Stats {
 	}
 
 	/**
-	 * pagePath filter for one tour, or for every tour URL when $path is null.
+	 * pagePath filter for one tour's paths, or for every tour URL when $paths is null.
+	 *
+	 * @param string[]|null $paths Path prefixes counted for the tour.
 	 */
-	private static function path_filter( $path = null ) {
-		$prefixes = $path ? array( $path ) : array( '/tours/', '/h3panos/', '/tour/' );
-
-		$expressions = array();
-		foreach ( $prefixes as $prefix ) {
-			$expressions[] = array(
-				'filter' => array(
-					'fieldName'    => 'pagePath',
-					'stringFilter' => array(
-						'matchType' => 'BEGINS_WITH',
-						'value'     => $prefix,
-					),
-				),
-			);
-		}
-
-		return count( $expressions ) === 1 ? $expressions[0] : array( 'orGroup' => array( 'expressions' => $expressions ) );
+	private static function path_filter( $paths = null ) {
+		return H3VT_Tours_Client_Analytics::path_filter( $paths ? $paths : array( '/tours/', '/h3panos/', '/tour/' ) );
 	}
 
 	/**
@@ -318,13 +370,15 @@ class H3VT_Tours_Stats {
 	/**
 	 * Fetch everything shown on the page for one tour or all tours.
 	 *
-	 * @param string|null $path    Tour path, or null for all tours.
-	 * @param array       $dates   Output of get_date_ranges().
-	 * @param bool        $refresh Skip the cache.
+	 * @param string[]|null $paths   Path prefixes counted for one tour (see
+	 *                               counted_paths()), or null for all tours.
+	 * @param array         $dates   Output of get_date_ranges().
+	 * @param bool          $refresh Skip the cache.
 	 * @return array
 	 */
-	private function get_stats( $path, $dates, $refresh ) {
-		$filter       = self::path_filter( $path );
+	private function get_stats( $paths, $dates, $refresh ) {
+		$path         = $paths ? $paths[0] : null;
+		$filter       = self::path_filter( $paths );
 		$current_only = self::ga_date_ranges( $dates, false );
 
 		$requests = array(
@@ -408,9 +462,55 @@ class H3VT_Tours_Stats {
 			$stats['devices']   = $this->parse_simple( $reports[2] );
 			$stats['sources']   = $this->parse_simple( $reports[3] );
 			$stats['locations'] = $this->parse_locations( $reports[4] );
+
+			// A rebuilt tour also gets its views split by URL. GA4 takes at most
+			// five requests per batch, so this one goes in a batch of its own.
+			if ( count( $paths ) > 1 ) {
+				$by_page       = $this->run_reports(
+					array(
+						array(
+							'dateRanges'      => $current_only,
+							'dimensions'      => array( array( 'name' => 'pagePath' ) ),
+							'metrics'         => self::metric_list( array( 'screenPageViews' ) ),
+							'dimensionFilter' => $filter,
+							'limit'           => 10000,
+						),
+					),
+					$refresh
+				);
+				$stats['urls'] = $this->parse_urls( $by_page[0], $paths );
+			}
 		}
 
 		return $stats;
+	}
+
+	/**
+	 * Views per counted path prefix, in the order the paths were given.
+	 *
+	 * @param array    $rows  pagePath rows.
+	 * @param string[] $paths Path prefixes counted for the tour.
+	 * @return array[] array('label' => path, 'value' => views, 'percent' => float)
+	 */
+	private function parse_urls( $rows, $paths ) {
+		$views = array_fill_keys( $paths, 0 );
+		foreach ( $rows as $row ) {
+			$key = self::tour_key_from_page_path( $row['dims'][0] );
+			if ( $key && isset( $views[ $key ] ) ) {
+				$views[ $key ] += $row['mets'][0];
+			}
+		}
+
+		$total = array_sum( $views );
+		$items = array();
+		foreach ( $views as $url => $value ) {
+			$items[] = array(
+				'label'   => $url,
+				'value'   => $value,
+				'percent' => $total > 0 ? $value / $total * 100 : 0,
+			);
+		}
+		return $items;
 	}
 
 	private static function empty_totals() {
@@ -508,29 +608,38 @@ class H3VT_Tours_Stats {
 	 * Visitor counts are summed across a tour's pages, so a visitor who opened
 	 * two pages of the same tour is counted twice. Tours are almost always a
 	 * single page, so this is close enough for a per-tour table; the headline
-	 * totals come from a separate de-duplicated query.
+	 * totals come from a separate de-duplicated query. The same goes for a
+	 * rebuilt tour, whose old S3 URLs are rolled into its row.
 	 */
 	private function parse_tour_rows( $rows ) {
 		$catalog = self::get_tour_catalog();
+		$owners  = self::owner_map( $catalog );
 		$tours   = array();
 
 		foreach ( $rows as $row ) {
-			$key = self::tour_key_from_page_path( $row['dims'][0] );
-			if ( ! $key ) {
+			$page_key = self::tour_key_from_page_path( $row['dims'][0] );
+			if ( ! $page_key ) {
 				continue;
 			}
+			$key   = isset( $owners[ $page_key ] ) ? $owners[ $page_key ] : $page_key;
 			$range = isset( $row['dims'][2] ) ? $row['dims'][2] : 'current';
 
 			if ( ! isset( $tours[ $key ] ) ) {
 				$tours[ $key ] = array(
 					'path'            => $key,
 					'title'           => isset( $catalog[ $key ] ) ? $catalog[ $key ]['title'] : $row['dims'][1],
-					'ga_title'        => $row['dims'][1],
+					'ga_title'        => '',
+					'legacy_paths'    => array_slice( self::counted_paths( $catalog, $key ), 1 ),
 					'known'           => isset( $catalog[ $key ] ),
 					'current'         => self::empty_totals(),
 					'previous'        => self::empty_totals(),
 					'duration_weight' => 0,
 				);
+			}
+
+			// Prefer the page title reported for the tour's own URL.
+			if ( $tours[ $key ]['ga_title'] === '' || $page_key === $key ) {
+				$tours[ $key ]['ga_title'] = $row['dims'][1];
 			}
 
 			$mets = array_combine( self::$total_metrics, $row['mets'] );
@@ -681,7 +790,7 @@ class H3VT_Tours_Stats {
 		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
 
 		$out    = fopen( 'php://output', 'w' );
-		$header = array( 'Tour', 'URL', 'Views', 'Visitors', 'New visitors', 'Visits', 'Avg. visit length (seconds)' );
+		$header = array( 'Tour', 'URL', 'Old tour URLs included', 'Views', 'Visitors', 'New visitors', 'Visits', 'Avg. visit length (seconds)' );
 		if ( $dates['previous'] ) {
 			$header[] = 'Views, previous period';
 		}
@@ -691,6 +800,7 @@ class H3VT_Tours_Stats {
 			$line = array(
 				$tour['title'],
 				home_url( $tour['path'] ),
+				implode( ' ', array_map( 'home_url', $tour['legacy_paths'] ) ),
 				(int) $tour['current']['screenPageViews'],
 				(int) $tour['current']['totalUsers'],
 				(int) $tour['current']['newUsers'],
@@ -719,11 +829,13 @@ class H3VT_Tours_Stats {
 		$dates   = $this->get_date_ranges( $request['range'], $request['from'], $request['to'] );
 		$catalog = self::get_tour_catalog();
 		$path    = $request['tour'] !== '' ? $request['tour'] : null;
+		$paths   = $path ? self::counted_paths( $catalog, $path ) : null;
+		$legacy  = $path ? array_slice( $paths, 1 ) : array();
 
 		$error = null;
 		$stats = null;
 		try {
-			$stats = $this->get_stats( $path, $dates, $request['refresh'] );
+			$stats = $this->get_stats( $paths, $dates, $request['refresh'] );
 		} catch ( Exception $e ) {
 			$error = $e->getMessage();
 		}
@@ -752,7 +864,7 @@ class H3VT_Tours_Stats {
 					<span><?php esc_html_e( 'Tour', 'h3vt-tours' ); ?></span>
 					<select name="tour">
 						<option value=""><?php esc_html_e( 'All tours', 'h3vt-tours' ); ?></option>
-						<?php foreach ( $this->group_catalog( $catalog ) as $group_label => $group ) : ?>
+						<?php foreach ( $this->group_catalog( $catalog, $request['tour'] ) as $group_label => $group ) : ?>
 							<optgroup label="<?php echo esc_attr( $group_label ); ?>">
 								<?php foreach ( $group as $tour ) : ?>
 									<option value="<?php echo esc_attr( $tour['path'] ); ?>" <?php selected( $request['tour'], $tour['path'] ); ?>>
@@ -867,14 +979,37 @@ class H3VT_Tours_Stats {
 					<div class="notice notice-info inline"><p>
 						<?php
 						$tracked_since = date_i18n( get_option( 'date_format' ), strtotime( self::TOUR_PAGES_TRACKED_SINCE ) );
-						if ( $path ) {
+						if ( $path && $legacy ) {
+							$tracking_note = sprintf(
+								/* translators: 1: date, 2: list of old tour URLs */
+								_n(
+									'Its /tour/ page has been counted since %1$s. Visits to its old tour URL (%2$s) are added in, so days before that still show visits.',
+									'Its /tour/ page has been counted since %1$s. Visits to its old tour URLs (%2$s) are added in, so days before that still show visits.',
+									count( $legacy ),
+									'h3vt-tours'
+								),
+								$tracked_since,
+								implode( ', ', $legacy )
+							);
+						} elseif ( $path ) {
 							/* translators: %s: date */
-							$tracking_note = __( 'Visits to this tour are counted from %s, so earlier days show no visits.', 'h3vt-tours' );
+							$tracking_note = sprintf( __( 'Visits to this tour are counted from %s, so earlier days show none. It has no old tour URL linked.', 'h3vt-tours' ), $tracked_since );
 						} else {
 							/* translators: %s: date */
-							$tracking_note = __( 'Visits to /tour/ pages are counted from %s. Earlier numbers, and the comparison with the previous period, only include the legacy tours.', 'h3vt-tours' );
+							$tracking_note = sprintf( __( 'Visits to /tour/ pages are counted from %s. Before that, the totals and the previous-period comparison come only from the old S3 tour URLs. Each rebuilt tour\'s row includes its old URLs.', 'h3vt-tours' ), $tracked_since );
 						}
-						echo esc_html( sprintf( $tracking_note, $tracked_since ) );
+						echo esc_html( $tracking_note );
+						?>
+					</p></div>
+				<?php elseif ( $path && ! empty( $catalog[ $path ]['owner'] ) && isset( $catalog[ $catalog[ $path ]['owner'] ] ) ) : ?>
+					<div class="notice notice-info inline"><p>
+						<?php
+						$owner = $catalog[ $catalog[ $path ]['owner'] ];
+						printf(
+							/* translators: %s: linked tour name */
+							esc_html__( 'This old tour URL was replaced by a rebuilt tour. Its visits are also counted under %s.', 'h3vt-tours' ),
+							'<a href="' . esc_url( $this->page_url( array_merge( $base_args, array( 'tour' => $owner['path'] ) ) ) ) . '">' . esc_html( $owner['title'] ) . '</a>'
+						);
 						?>
 					</p></div>
 				<?php endif; ?>
@@ -888,6 +1023,9 @@ class H3VT_Tours_Stats {
 						$this->render_breakdown( __( 'Devices', 'h3vt-tours' ), 'visitors', $stats['devices'], true );
 						$this->render_breakdown( __( 'Traffic sources', 'h3vt-tours' ), 'visits', $stats['sources'], true );
 						$this->render_breakdown( __( 'Top locations', 'h3vt-tours' ), 'visitors', $stats['locations'], false );
+						if ( isset( $stats['urls'] ) ) {
+							$this->render_breakdown( __( 'Views by URL', 'h3vt-tours' ), 'views', $stats['urls'], true );
+						}
 						?>
 					</div>
 				<?php else : ?>
@@ -916,8 +1054,11 @@ class H3VT_Tours_Stats {
 	/**
 	 * Split the catalog into tour pages and legacy S3 tours for the picker, adding
 	 * the URL to any name that appears more than once in a group.
+	 *
+	 * Legacy tours already counted under a rebuilt tour are left out, unless
+	 * one is the current selection.
 	 */
-	private function group_catalog( $catalog ) {
+	private function group_catalog( $catalog, $selected ) {
 		$groups = array(
 			__( 'Tours', 'h3vt-tours' )             => array(),
 			__( 'Legacy tours (S3)', 'h3vt-tours' ) => array(),
@@ -925,6 +1066,9 @@ class H3VT_Tours_Stats {
 		$keys   = array_keys( $groups );
 
 		foreach ( $catalog as $tour ) {
+			if ( ! empty( $tour['owner'] ) && $tour['path'] !== $selected ) {
+				continue;
+			}
 			$groups[ strpos( $tour['path'], '/tour/' ) === 0 ? $keys[0] : $keys[1] ][] = $tour;
 		}
 
@@ -1061,13 +1205,17 @@ class H3VT_Tours_Stats {
 								<span class="h3ts-bar-value">
 									<?php
 									$count = number_format_i18n( $item['value'] );
-									echo esc_html(
-										$unit === 'visits'
+									if ( $unit === 'views' ) {
+										/* translators: %s: number of views */
+										$text = sprintf( _n( '%s view', '%s views', (int) $item['value'], 'h3vt-tours' ), $count );
+									} elseif ( $unit === 'visits' ) {
 										/* translators: %s: number of visits */
-										? sprintf( _n( '%s visit', '%s visits', (int) $item['value'], 'h3vt-tours' ), $count )
+										$text = sprintf( _n( '%s visit', '%s visits', (int) $item['value'], 'h3vt-tours' ), $count );
+									} else {
 										/* translators: %s: number of visitors */
-										: sprintf( _n( '%s visitor', '%s visitors', (int) $item['value'], 'h3vt-tours' ), $count )
-									);
+										$text = sprintf( _n( '%s visitor', '%s visitors', (int) $item['value'], 'h3vt-tours' ), $count );
+									}
+									echo esc_html( $text );
 									?>
 									<?php if ( $show_percent ) : ?>
 										<em><?php echo esc_html( round( $item['percent'] ) . '%' ); ?></em>
@@ -1136,6 +1284,9 @@ class H3VT_Tours_Stats {
 											<a href="<?php echo esc_url( home_url( $tour['path'] ) ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $tour['path'] ); ?></a>
 										<?php else : ?>
 											<?php echo esc_html( $tour['path'] ); ?>
+										<?php endif; ?>
+										<?php if ( $tour['legacy_paths'] ) : ?>
+											&middot; <?php esc_html_e( 'includes', 'h3vt-tours' ); ?> <?php echo esc_html( implode( ', ', $tour['legacy_paths'] ) ); ?>
 										<?php endif; ?>
 										<?php if ( ! $tour['known'] ) : ?>
 											&middot; <?php esc_html_e( 'not in the tour list', 'h3vt-tours' ); ?>
