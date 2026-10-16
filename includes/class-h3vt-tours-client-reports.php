@@ -34,6 +34,9 @@ class H3VT_Tours_Client_Reports {
 	const WEEKLY_CATCH_UP_DAYS  = 2;
 
 	public function __construct() {
+		// h3tm hooked itself in on plugins_loaded priority 10; this runs at 20.
+		H3VT_Tours_Client_Analytics::silence_legacy();
+
 		add_action( 'init', array( $this, 'schedule' ) );
 		add_action( self::CRON_HOOK, array( $this, 'run' ) );
 		add_action( 'wp_ajax_h3vt_tours_send_client_report', array( $this, 'ajax_send' ) );
@@ -293,7 +296,7 @@ class H3VT_Tours_Client_Reports {
 			wp_send_json_error( __( 'You do not have permission to send this report.', 'h3vt-tours' ) );
 		}
 		if ( ! H3VT_Tours_Client_Analytics::is_enabled() ) {
-			wp_send_json_error( __( 'H3 Tour Management still sends client reports. Deactivate it first.', 'h3vt-tours' ) );
+			wp_send_json_error( __( 'H3 Tour Management still sends client reports. Take them over first.', 'h3vt-tours' ) );
 		}
 
 		try {

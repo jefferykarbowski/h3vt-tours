@@ -1,6 +1,6 @@
 # Client analytics: moving off h3-tour-management
 
-h3vt-tours 1.11.0 carries the two client-facing analytics features that used to
+h3vt-tours 1.11.x carries the two client-facing analytics features that used to
 live in h3-tour-management (h3tm):
 
 - the scheduled analytics emails (was cron `h3tm_analytics_cron`)
@@ -14,7 +14,7 @@ h3tm's `uninstall.php` drops `{prefix}h3tm_user_settings` (frequencies and
 last-sent dates) and deletes every `h3tm_tours` user meta row (assignments).
 It keeps `{prefix}h3tm_tour_metadata` and the `h3tm_ga_measurement_id` option,
 which h3vt-tours still reads. So the assignments must be copied into
-h3vt-tours storage before h3tm is **deleted**. Deactivating h3tm deletes nothing.
+h3vt-tours storage before h3tm is ever **deleted**. Deactivating h3tm deletes nothing.
 
 ## Where h3vt-tours keeps it
 
@@ -33,17 +33,24 @@ until they are published.
 
 ## Who owns what while both plugins are installed
 
-h3vt-tours checks for h3tm (`H3TM_VERSION`). While h3tm is active:
+h3tm cannot be deactivated yet: its S3 proxy serves every old `/h3panos/` tour,
+including the ones embedded on client sites. So client analytics move over
+with a switch instead, while h3tm stays active.
 
-- h3vt-tours sends nothing (its cron returns early, `run` refuses)
-- `[tour_analytics_display]` stays h3tm's
-- the h3vt-tours profile fields are read-only, with a notice
+| | Takeover off (default) | `takeover on` |
+|---|---|---|
+| Report emails | h3tm's cron | h3vt-tours' cron. h3tm's cron event still fires with nothing attached |
+| `[tour_analytics_display]` | h3tm | h3vt-tours |
+| Profile fields | h3tm's "3D Tour Settings". h3vt-tours' are read-only | h3vt-tours' "Tour Analytics". h3tm's are unhooked |
+| `/h3panos/` tours | h3tm | h3tm (untouched) |
 
-Deactivating h3tm hands all three over on the next request. No settings toggle.
+h3tm's data is never modified, so `takeover off` restores its reports exactly.
+Deactivating h3tm (once tour serving has moved) also hands everything to
+h3vt-tours with no switch needed.
 
 ## Cutover
 
-1. Deploy h3vt-tours 1.11.0 with h3tm still active. Nothing changes for clients.
+1. Deploy h3vt-tours 1.11.1 with h3tm active. Nothing changes for clients.
 2. Dry run and review:
 
    ```
@@ -52,27 +59,28 @@ Deactivating h3tm hands all three over on the next request. No settings toggle.
 
    Rows marked `UNMATCHED`, `AMBIGUOUS` or `GA-CONFLICT` stay assigned as the old
    tour (same numbers clients get today) unless settled with `--map`.
-3. Apply, with any overrides:
+3. Pick a day that is **not** the 1st-7th of a month (or Sunday-Tuesday if anyone
+   is weekly), then apply, with any overrides, and switch over:
 
    ```
    wp h3vt-tours client-analytics migrate --ga --apply --map="Arden Lely Community=7611"
+   wp h3vt-tours client-analytics takeover on
    ```
 
 4. Check a client or two: `wp h3vt-tours client-analytics preview 70 > /tmp/70.html`,
-   or the Preview button on their profile.
-5. Pick a day that is **not** the 1st-7th of a month or a Sunday-Tuesday (so no
-   report is due), re-run step 3 to pick up any late edits, then deactivate h3tm.
-6. Check `/tour-analytics/` as a client (User Switching is installed) and
+   `/tour-analytics/` as a client (User Switching is installed), and
    `wp h3vt-tours client-analytics due --date=YYYY-MM-01` for the next send.
-7. After the first monthly send goes out from h3vt-tours, delete h3tm.
+5. h3tm stays installed until its tour serving is ported. Never delete it before
+   then, and remember its uninstall wipes `h3tm_tours` and `h3tm_user_settings`.
 
-Re-running `migrate --apply` after h3tm is deactivated needs `--force`, because it
-rebuilds assignments from h3tm's data and would undo edits made since.
+Re-running `migrate --apply` once client analytics run here needs `--force`,
+because it rebuilds assignments from h3tm's data and would undo edits made since.
 
 ## Rollback
 
-Reactivate h3tm. It takes the shortcode and the emails back and its data is
-untouched. The h3vt-tours user meta can stay. It does nothing while h3tm is active.
+`wp h3vt-tours client-analytics takeover off`. h3tm takes the shortcode, the
+emails and its profile fields back, with its data untouched. The h3vt-tours user
+meta can stay. It does nothing while takeover is off.
 
 ## Changes from h3tm's behaviour
 

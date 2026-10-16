@@ -21,9 +21,13 @@
  *                                           so a client's numbers include views of
  *                                           both URLs and keep their history.
  *
- * While h3tm is still active it keeps sending the emails and serving the
- * shortcode; this plugin stays dormant so clients never get two reports.
- * Deactivating h3tm hands both over.
+ * While h3tm is active it keeps sending the emails and serving the shortcode,
+ * and this plugin stays dormant so clients never get two reports. h3tm cannot
+ * simply be deactivated yet, because it also serves the old /h3panos/ tours,
+ * so `wp h3vt-tours client-analytics takeover on` hands client analytics over
+ * while h3tm stays active: this plugin then unhooks h3tm's report cron,
+ * shortcode and profile fields and runs its own. `takeover off` hands them
+ * back. Deactivating h3tm also hands them over.
  *
  * @package H3VT_Tours
  */
@@ -44,6 +48,12 @@ class H3VT_Tours_Client_Analytics {
 	const META_LEGACY_PATHS = '_h3vt_tours_legacy_paths';
 
 	const DEFAULT_FREQUENCY = 'monthly';
+
+	/**
+	 * Option set by `client-analytics takeover on`: run client analytics here
+	 * even though h3tm is active.
+	 */
+	const TAKEOVER_OPTION = 'h3vt_tours_client_analytics_takeover';
 
 	/**
 	 * Report results are cached this long so page reloads stay cheap.
@@ -84,7 +94,48 @@ class H3VT_Tours_Client_Analytics {
 	 * @return bool
 	 */
 	public static function is_enabled() {
-		return (bool) apply_filters( 'h3vt_tours_client_analytics_enabled', ! self::legacy_plugin_active() );
+		$enabled = ! self::legacy_plugin_active() || (bool) get_option( self::TAKEOVER_OPTION );
+		return (bool) apply_filters( 'h3vt_tours_client_analytics_enabled', $enabled );
+	}
+
+	/**
+	 * Whether this plugin has taken client analytics over from an active h3tm.
+	 *
+	 * @return bool
+	 */
+	public static function is_taking_over() {
+		return self::legacy_plugin_active() && self::is_enabled();
+	}
+
+	/**
+	 * Unhook h3tm's client analytics so only this plugin's run.
+	 *
+	 * Called on plugins_loaded after h3tm has hooked itself in. Its report cron
+	 * event stays scheduled but has nothing attached, and its tour serving is
+	 * left alone. The shortcode is swapped in H3VT_Tours_Client_Page::register().
+	 */
+	public static function silence_legacy() {
+		if ( ! self::is_taking_over() ) {
+			return;
+		}
+
+		remove_all_actions( 'h3tm_analytics_cron' );
+
+		global $wp_filter;
+		$hooks = array( 'show_user_profile', 'edit_user_profile', 'personal_options_update', 'edit_user_profile_update', 'wp_ajax_h3tm_send_user_analytics' );
+		foreach ( $hooks as $hook ) {
+			if ( empty( $wp_filter[ $hook ] ) ) {
+				continue;
+			}
+			foreach ( $wp_filter[ $hook ]->callbacks as $priority => $callbacks ) {
+				foreach ( $callbacks as $callback ) {
+					$function = $callback['function'];
+					if ( is_array( $function ) && is_object( $function[0] ) && get_class( $function[0] ) === 'H3TM_User_Fields' ) {
+						remove_action( $hook, $function, $priority );
+					}
+				}
+			}
+		}
 	}
 
 	/*
