@@ -410,6 +410,12 @@ class H3VT_Tours_3DVista_Converter {
 			return;
 		}
 
+		// Drop assets the tour's navigation does not file under any category.
+		// Some exports ship the same slide twice (once per skin layout) plus
+		// hotspot/popup artwork; uploading those doubles the media library for
+		// images that can never appear as slides.
+		$images = $this->filter_to_categorised( $images, $metadata );
+
 		// Reorder panoramas to match the 3DVista presentation order.
 		$images = $this->order_images_by_metadata( $images, $metadata );
 
@@ -824,6 +830,7 @@ class H3VT_Tours_3DVista_Converter {
 		$metadata = array(
 			'photos'                 => array(),
 			'nav_categories'         => array(),
+			'categorised_files'      => array(),
 			'main_playlist_filenames' => array(),
 			'floorplans'             => array(),
 			'embedded_tours'         => array(),
@@ -931,74 +938,14 @@ class H3VT_Tours_3DVista_Converter {
 
 		// 3. Parse navigation categories from DropDown skin elements.
 		//
-		// The actual tour navigation categories live in DropDown_XXX.label
-		// entries in the locale file (e.g. "RESIDENT ROOMS", "OUTDOOR AREAS").
-		// Each DropDown has a corresponding DropDown_XXX_playlist in
-		// script_general.js that lists which albums belong to that category.
-		//
-		// This replaces the old approach of using album labels as categories,
-		// which produced incorrect per-album "categories" instead of the real
-		// navigation groups.
+		// The tour's real navigation groups live in the DropDown skin elements.
+		// Resolving them is delegated to resolve_nav_categories(), which handles
+		// both of the export layouts 3DVista produces (see that method).
+		$nav = $this->resolve_nav_categories( $content, $locale );
 
-		// 3a. Collect DropDown labels from locale (skip _mobile duplicates).
-		$dropdown_labels = array(); // dropdown_id => label
-		foreach ( $locale as $key => $value ) {
-			if ( 0 !== strpos( $key, 'DropDown_' ) ) {
-				continue;
-			}
-			// Match "DropDown_XXX.label" but not "DropDown_XXX_mobile.label".
-			if ( false === strpos( $key, '.label' ) ) {
-				continue;
-			}
-			if ( false !== strpos( $key, '_mobile.' ) ) {
-				continue;
-			}
+		$metadata['nav_categories'] = $nav['order'];
 
-			// Extract the DropDown ID: everything before ".label".
-			$dropdown_id = substr( $key, 0, strpos( $key, '.label' ) );
-			$dropdown_labels[ $dropdown_id ] = $value;
-		}
-
-		// 3b. Parse DropDown playlists from script_general.js.
-		// Each DropDown_XXX_playlist contains items with "media":"this.album_YYY".
-		$album_to_category = array(); // album_id => category label
-		$dropdown_order    = array(); // ordered list of category labels
-
-		foreach ( $dropdown_labels as $dropdown_id => $label ) {
-			$playlist_id  = $dropdown_id . '_playlist';
-			$playlist_pos = strpos( $content, '"id":"' . $playlist_id . '"' );
-			if ( false === $playlist_pos ) {
-				continue;
-			}
-
-			// Search backwards for the items array belonging to this playlist.
-			$items_start = strrpos( substr( $content, 0, $playlist_pos ), '"items"' );
-			if ( false === $items_start ) {
-				continue;
-			}
-
-			$section   = substr( $content, $items_start, $playlist_pos - $items_start );
-			$album_ids = array();
-			if ( preg_match_all( '/"media"\s*:\s*"this\.(album_[^"]+)"/', $section, $dd_matches ) ) {
-				$album_ids = $dd_matches[1];
-			}
-
-			if ( empty( $album_ids ) ) {
-				continue;
-			}
-
-			$dropdown_order[] = $label;
-
-			// Assign each album to this category (first match wins, so more
-			// specific dropdowns should be processed before catch-all ones).
-			foreach ( $album_ids as $album_id ) {
-				if ( ! isset( $album_to_category[ $album_id ] ) ) {
-					$album_to_category[ $album_id ] = $label;
-				}
-			}
-		}
-
-		$metadata['nav_categories'] = $dropdown_order;
+		$album_to_category = $nav['album_categories'];
 
 		// 4. Extract mainPlayList — ordered album references.
 		// Pattern: "media":"this.album_XXX" inside mainPlayList items.
@@ -1069,6 +1016,39 @@ class H3VT_Tours_3DVista_Converter {
 					'description' => $album_info ? $album_info['subtitle'] : '',
 					'category'    => $category,
 				);
+			}
+		}
+
+		// 6b. Merge in assets that the category albums reference directly.
+		//
+		// In the "category album" export layout the navigation groups point at
+		// standalone photo_XXX.jpg assets rather than at mainPlayList albums,
+		// so those files never appear in $photo_map. They carry the only
+		// reliable category data in the export, so they are added here — and
+		// their titles come from the photo object rather than an album label.
+		foreach ( $nav['file_categories'] as $filename => $category ) {
+			$title = isset( $nav['file_titles'][ $filename ] ) ? $nav['file_titles'][ $filename ] : '';
+
+			if ( isset( $metadata['photos'][ $filename ] ) ) {
+				$metadata['photos'][ $filename ]['category'] = $category;
+				if ( '' !== $title && '' === $metadata['photos'][ $filename ]['title'] ) {
+					$metadata['photos'][ $filename ]['title'] = $title;
+				}
+				continue;
+			}
+
+			$metadata['photos'][ $filename ] = array(
+				'title'       => $title,
+				'description' => '',
+				'category'    => $category,
+			);
+		}
+
+		// Every asset the navigation actually files under a category, in both
+		// export layouts. Used to keep non-slide artwork out of the import.
+		foreach ( $metadata['photos'] as $filename => $photo_row ) {
+			if ( ! empty( $photo_row['category'] ) ) {
+				$metadata['categorised_files'][] = $filename;
 			}
 		}
 
@@ -1401,6 +1381,35 @@ class H3VT_Tours_3DVista_Converter {
 	 * @param array $metadata Parsed 3DVista metadata.
 	 * @return array Reordered list of absolute file paths.
 	 */
+	/**
+	 * Restrict the panorama queue to assets the tour's navigation references.
+	 *
+	 * Only applies when the export actually carried navigation grouping — for
+	 * exports without it every catalogued image is kept, since there is then
+	 * no way to tell a real slide from a popup image.
+	 *
+	 * @param array $images   Absolute file paths.
+	 * @param array $metadata Parsed 3DVista metadata.
+	 * @return array Filtered file paths.
+	 */
+	private function filter_to_categorised( $images, $metadata ) {
+		if ( empty( $metadata['categorised_files'] ) ) {
+			return $images;
+		}
+
+		$keep     = array_flip( $metadata['categorised_files'] );
+		$filtered = array();
+
+		foreach ( $images as $path ) {
+			if ( isset( $keep[ basename( $path ) ] ) ) {
+				$filtered[] = $path;
+			}
+		}
+
+		// Never empty the queue on an unexpected filename mismatch.
+		return empty( $filtered ) ? $images : $filtered;
+	}
+
 	private function order_images_by_metadata( $images, $metadata ) {
 		if ( empty( $metadata['main_playlist_filenames'] ) ) {
 			return $images;
@@ -1589,14 +1598,26 @@ class H3VT_Tours_3DVista_Converter {
 		$title_seen = array(); // track how many times we've output each title
 
 		// Navigation categories — every imported tour starts from the
-		// standard predetermined set so the nav structure is consistent
-		// (3DVista's own category grouping is intentionally not used).
-		// Each slide is appended to its category's gallery; the slide
-		// title and description are stored on the attachment itself so
-		// they're editable in the gallery's Edit Image form.
+		// standard predetermined set so the nav structure is consistent,
+		// and each slide is filed under the category the source tour's own
+		// navigation puts it in. The slide title and description are stored
+		// on the attachment itself so they're editable in the gallery's
+		// Edit Image form.
 		$grouped = array();
 		foreach ( H3VT_Tours_ACF::get_default_nav_categories() as $row ) {
 			$grouped[ $row['nav_label'] ] = array();
+		}
+
+		// Whether the export carried real navigation grouping. When it did,
+		// assets outside every group are deliberately excluded below.
+		$has_source_categories = false;
+		if ( $has_metadata && ! empty( $metadata['photos'] ) ) {
+			foreach ( $metadata['photos'] as $photo_row ) {
+				if ( ! empty( $photo_row['category'] ) ) {
+					$has_source_categories = true;
+					break;
+				}
+			}
 		}
 
 		foreach ( $attachment_ids as $i => $att ) {
@@ -1633,11 +1654,20 @@ class H3VT_Tours_3DVista_Converter {
 				'post_excerpt' => $description,
 			) );
 
-			// Slide category: an explicit form-supplied default wins;
-			// otherwise auto-detect from the slide title.
+			// Slide category. An explicit form-supplied default wins; otherwise
+			// the tour's own navigation grouping is authoritative.
 			if ( ! empty( $default_category ) ) {
 				$category = $default_category;
+			} elseif ( $photo_meta && ! empty( $photo_meta['category'] ) ) {
+				$category = $photo_meta['category'];
+			} elseif ( $has_source_categories ) {
+				// The export does carry category data and this asset is not in
+				// any of them — it is a hotspot/popup image or a duplicate of a
+				// categorised slide, so it is not a navigable slide. Leave it
+				// out rather than inventing a category for it.
+				continue;
 			} else {
+				// No category data in the export at all: fall back to keywords.
 				$category = $this->guess_slide_category( $title );
 			}
 
@@ -1748,10 +1778,300 @@ class H3VT_Tours_3DVista_Converter {
 	}
 
 	/**
+	 * Return the complete JSON object surrounding a byte offset.
+	 *
+	 * script_general.js objects nest arbitrarily, so brace matching is the
+	 * only reliable way to isolate one — regex and nearest-"items" heuristics
+	 * silently capture a neighbouring object's items array instead.
+	 *
+	 * @param string $content Script contents.
+	 * @param int    $offset  Byte offset known to sit inside the object.
+	 * @return string The object text including its braces, or '' on failure.
+	 */
+	private function extract_object_at( $content, $offset ) {
+		// Walk backwards to this object's opening brace.
+		$depth = 0;
+		$start = -1;
+		for ( $i = $offset; $i >= 0; $i-- ) {
+			$char = $content[ $i ];
+			if ( '}' === $char ) {
+				$depth++;
+			} elseif ( '{' === $char ) {
+				if ( 0 === $depth ) {
+					$start = $i;
+					break;
+				}
+				$depth--;
+			}
+		}
+
+		if ( $start < 0 ) {
+			return '';
+		}
+
+		// Walk forwards to the matching closing brace.
+		$depth  = 0;
+		$length = strlen( $content );
+		for ( $j = $start; $j < $length; $j++ ) {
+			$char = $content[ $j ];
+			if ( '{' === $char ) {
+				$depth++;
+			} elseif ( '}' === $char ) {
+				$depth--;
+				if ( 0 === $depth ) {
+					return substr( $content, $start, $j - $start + 1 );
+				}
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Locate a script object by its "id" value.
+	 *
+	 * @param string $content Script contents.
+	 * @param string $id      Object id to find.
+	 * @return string The object text, or '' when not present.
+	 */
+	private function find_object_by_id( $content, $id ) {
+		if ( ! preg_match( '/"id"\s*:\s*"' . preg_quote( $id, '/' ) . '"/', $content, $m, PREG_OFFSET_CAPTURE ) ) {
+			return '';
+		}
+
+		return $this->extract_object_at( $content, $m[0][1] );
+	}
+
+	/**
+	 * Map a 3DVista category name onto the standard nav label set.
+	 *
+	 * Tours label the same group differently across brands — "AMENITIES" and
+	 * "COMMON AREAS" are the same category, as are "DINING" and
+	 * "DINING / LIVING AREAS" — so matching is by keyword rather than exact
+	 * string. Aerial views are folded into Outdoor Areas, matching how the
+	 * exports themselves group them internally.
+	 *
+	 * @param string $name Category name from the export.
+	 * @return string A standard nav label, or '' when nothing matches.
+	 */
+	private function normalize_nav_category( $name ) {
+		$text = ' ' . preg_replace( '/\s+/', ' ', strtolower( trim( $name ) ) ) . ' ';
+
+		if ( ' ' === $text ) {
+			return '';
+		}
+
+		// Order matters: "Dining / Living" must win before the broader
+		// common-area keywords, and "aerial" before any outdoor synonym.
+		$keywords = array(
+			'Resident Rooms'        => array( 'resident', 'bedroom', 'private room', 'shared room' ),
+			'Dining / Living Areas' => array( 'dining', 'living', 'bistro', 'kitchen', 'cafe' ),
+			'Activity Rooms'        => array( 'activity', 'activities' ),
+			'Outdoor Areas'         => array( 'outdoor', 'aerial', 'exterior', 'courtyard', 'garden', 'patio' ),
+			'Common Areas'          => array( 'common', 'amenit', 'lobby', 'entrance' ),
+		);
+
+		foreach ( $keywords as $category => $words ) {
+			foreach ( $words as $word ) {
+				if ( false !== strpos( $text, $word ) ) {
+					return $category;
+				}
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Resolve the tour's real navigation categories and their member assets.
+	 *
+	 * 3DVista emits two different layouts and a tour uses one or the other:
+	 *
+	 *  A. The DropDown has a companion DropDown_XXX_playlist (or, on exports
+	 *     that only ship a mobile skin, DropDown_XXX_mobile_playlist) whose
+	 *     items reference the mainPlayList albums belonging to that category.
+	 *     The slide asset for an album is album_XXX_0.<ext>.
+	 *
+	 *  B. The DropDown's click handler calls setPlayListSelectedIndex() on a
+	 *     standalone playList_XXX holding a single "category album" — a
+	 *     PhotoAlbum whose own playlist contains every photo_XXX.<ext> in that
+	 *     category. Here the DropDown_XXX_playlist object exists but is an
+	 *     empty stub, which is why keying off it alone yields nothing.
+	 *
+	 * The category name is taken from the DropDown's data.name (the author's
+	 * internal grouping) in preference to its visible label, which is often a
+	 * brand-specific synonym.
+	 *
+	 * @param string $content Contents of script_general.js.
+	 * @param array  $locale  Parsed locale strings.
+	 * @return array {
+	 *     @type array $order            Standard nav labels in presentation order.
+	 *     @type array $album_categories album_id => standard nav label (layout A).
+	 *     @type array $file_categories  filename => standard nav label (layout B).
+	 *     @type array $file_titles      filename => slide title (layout B).
+	 * }
+	 */
+	private function resolve_nav_categories( $content, $locale ) {
+		$result = array(
+			'order'            => array(),
+			'album_categories' => array(),
+			'file_categories'  => array(),
+			'file_titles'      => array(),
+		);
+
+		// Collect DropDown labels from locale (skip _mobile duplicates).
+		$dropdown_labels = array();
+		foreach ( $locale as $key => $value ) {
+			if ( 0 !== strpos( $key, 'DropDown_' ) ) {
+				continue;
+			}
+			if ( false === strpos( $key, '.label' ) ) {
+				continue;
+			}
+			if ( false !== strpos( $key, '_mobile.' ) ) {
+				continue;
+			}
+			$dropdown_labels[ substr( $key, 0, strpos( $key, '.label' ) ) ] = $value;
+		}
+
+		foreach ( $dropdown_labels as $dropdown_id => $dropdown_label ) {
+			$dropdown_obj = $this->find_object_by_id( $content, $dropdown_id );
+			if ( '' === $dropdown_obj ) {
+				continue;
+			}
+
+			$data_name = '';
+			if ( preg_match( '/"data"\s*:\s*\{[^}]*"name"\s*:\s*"([^"]*)"/', $dropdown_obj, $dm ) ) {
+				$data_name = $dm[1];
+			}
+
+			$category = $this->normalize_nav_category( $data_name );
+			if ( '' === $category ) {
+				$category = $this->normalize_nav_category( $dropdown_label );
+			}
+			if ( '' === $category ) {
+				continue;
+			}
+
+			$matched = false;
+
+			// Layout A — companion playlist listing mainPlayList albums.
+			foreach ( array( '_playlist', '_mobile_playlist' ) as $suffix ) {
+				$playlist_obj = $this->find_object_by_id( $content, $dropdown_id . $suffix );
+				if ( '' === $playlist_obj ) {
+					continue;
+				}
+				if ( ! preg_match_all( '/"media"\s*:\s*"this\.(album_[^"]+)"/', $playlist_obj, $am ) ) {
+					continue;
+				}
+
+				foreach ( $am[1] as $album_id ) {
+					// First dropdown to claim an album wins.
+					if ( ! isset( $result['album_categories'][ $album_id ] ) ) {
+						$result['album_categories'][ $album_id ] = $category;
+					}
+				}
+				$matched = true;
+				break;
+			}
+
+			// Layout B — click handler points at a standalone category album.
+			if ( ! $matched && preg_match_all( '/setPlayListSelectedIndex\(\s*this\.(playList_[A-Za-z0-9_]+)/', $dropdown_obj, $pm ) ) {
+				foreach ( $pm[1] as $playlist_id ) {
+					$playlist_obj = $this->find_object_by_id( $content, $playlist_id );
+					if ( '' === $playlist_obj ) {
+						continue;
+					}
+					if ( ! preg_match_all( '/"media"\s*:\s*"this\.(album_[^"]+)"/', $playlist_obj, $am ) ) {
+						continue;
+					}
+
+					foreach ( $am[1] as $album_id ) {
+						$files = $this->category_album_files( $content, $locale, $album_id );
+						foreach ( $files as $filename => $title ) {
+							if ( ! isset( $result['file_categories'][ $filename ] ) ) {
+								$result['file_categories'][ $filename ] = $category;
+								$result['file_titles'][ $filename ]     = $title;
+							}
+						}
+						if ( ! empty( $files ) ) {
+							$matched = true;
+						}
+					}
+
+					if ( $matched ) {
+						break;
+					}
+				}
+			}
+
+			if ( $matched && ! in_array( $category, $result['order'], true ) ) {
+				$result['order'][] = $category;
+			}
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Resolve a category album to its member image files and titles.
+	 *
+	 * @param string $content  Contents of script_general.js.
+	 * @param array  $locale   Parsed locale strings.
+	 * @param string $album_id The category album's id.
+	 * @return array filename => title.
+	 */
+	private function category_album_files( $content, $locale, $album_id ) {
+		$files      = array();
+		$album_obj  = $this->find_object_by_id( $content, $album_id );
+		if ( '' === $album_obj ) {
+			return $files;
+		}
+
+		if ( ! preg_match( '/"playList"\s*:\s*"this\.([A-Za-z0-9_]+)"/', $album_obj, $pm ) ) {
+			return $files;
+		}
+
+		$playlist_obj = $this->find_object_by_id( $content, $pm[1] );
+		if ( '' === $playlist_obj ) {
+			return $files;
+		}
+
+		if ( ! preg_match_all( '/"media"\s*:\s*"this\.(photo_[A-Za-z0-9_]+)"/', $playlist_obj, $mm ) ) {
+			return $files;
+		}
+
+		foreach ( $mm[1] as $photo_id ) {
+			$photo_obj = $this->find_object_by_id( $content, $photo_id );
+			if ( '' === $photo_obj ) {
+				continue;
+			}
+
+			// The full-size asset, not the _t thumbnail.
+			if ( ! preg_match( '/"url"\s*:\s*"media\/(' . preg_quote( $photo_id, '/' ) . '\.(?:jpg|jpeg|png|webp))"/i', $photo_obj, $um ) ) {
+				continue;
+			}
+
+			$title     = '';
+			$label_key = $photo_id . '.label';
+			if ( isset( $locale[ $label_key ] ) && '' !== $locale[ $label_key ] ) {
+				$title = $locale[ $label_key ];
+			} elseif ( preg_match( '/"data"\s*:\s*\{[^}]*"label"\s*:\s*"([^"]*)"/', $photo_obj, $lm ) ) {
+				$title = $lm[1];
+			}
+
+			$files[ $um[1] ] = $title;
+		}
+
+		return $files;
+	}
+
+	/**
 	 * Best-effort mapping of a slide title to a standard nav category.
 	 *
-	 * 3DVista archives do not carry the client's category taxonomy, so
-	 * each slide is bucketed by keyword match against its title. The
+	 * Fallback for exports whose skin carries no navigation grouping at all;
+	 * when resolve_nav_categories() finds real categories they are used
+	 * instead. Slides are bucketed by keyword match against the title. The
 	 * description is intentionally ignored — it is marketing copy that
 	 * frequently references other areas. Unrecognised titles fall back
 	 * to "Common Areas".
